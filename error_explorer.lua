@@ -1,4 +1,3 @@
---[[pod_format="raw",created="2024-11-25 22:47:56",modified="2025-01-11 23:39:36",revision=5834]]
 -- # picotron error explorer
 --
 -- by kira
