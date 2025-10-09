@@ -2,34 +2,78 @@
 DIVIDER_HORIZONTAL = 0
 DIVIDER_VERTICAL = 1
 
-function create_button(el)
-	el = el or {}
+function create_label(self, el)
+	el = default(el, {
+		text = "<empty>"
+	})
 
-	el.label = el.label or "<empty>"
-	local ww = #el.label*5+2--print(el.label,0,-1000,0) or 10
-	el.width = el.width or ww
-	el.height = el.height or 10
-
-	--assert(el.width == 10)
+	el.width = #el.text * 5 + 2
+	el.height = 8
 
 	function el:draw()
-		rectfill(0,0,self.width,self.height,8)
-		print(self.label,1,1,2)
-		--notify(e.parent)
-		--assert(false)
+		print(self.text, 0, 0, theme.color.text)
+	end
+
+	return self:attach(el)
+end
+
+function create_panel(self, el)
+	el = default(el, {
+		color = 12
+	})
+
+	function el:draw()
+		rectfill(0,0,self.width,self.height,self.color)
+	end
+
+	return self:attach(el)
+end
+
+function create_button(self, el)
+	el = self:attach_button(el)
+
+	function el:draw()
+		rectfill(0,0,self.width,self.height,theme.color.secondary)
+		print(self.label,1,1,theme.color.text)
 	end
 
 	return el
 end
 
-function create_split_container(el)
-	el = el or {}
+function create_icon_button(self, el)
+	el = default(el, {
+		sprite = 0,
+		offset_x = 0,
+		offset_y = 0
+	})
 
-	el.x = el.x or 0
-	el.y = el.y or 0
-	el.width = el.width or 1
-	el.height = el.height or 1
-	el.split_point = el.split_point or 1
+	if not (el.width or el.height) then
+		local sprite_dat = get_spr(el.sprite)
+
+		el.width = sprite_dat:width()
+		el.height = sprite_dat:height()
+	end
+
+	el = self:attach_button(el)
+
+	--assert(el.width == 10)
+
+	function el:draw(msg)
+		local yy = 0
+		--if (msg.mb > 0 and msg.has_pointer) then yy = yy + 1 end
+
+		rectfill(0,yy,self.width,self.height,theme.color.secondary)
+		spr(self.sprite, self.offset_x, self.offset_y)
+	end
+
+	return el
+end
+
+function create_split_container(self, el)
+	el = default(el, {
+		split_point = 1,
+	})
+
 	el.bar_hovering = false
 	el.was_bar_hovering = false
 	el.dragging = false
@@ -51,23 +95,22 @@ function create_split_container(el)
 
 	function el:update(msg)
 		self.mouse_clicked = (msg.mb & 0b1 > 0) and (not self.mouse_held)
-		local abs_x = msg.mx - self.sx
-		local abs_y = msg.my - self.sy
+		local abs_x = msg.mx
+		local abs_y = msg.my
 
 		self.bar_hovering = (
 			self.kind == DIVIDER_HORIZONTAL and (abs_x > ((self.split_point)-5) and abs_x < ((self.split_point)+5)) or
 			(abs_y > ((self.split_point)-5) and abs_y < ((self.split_point)+5))
 		)
 
-		--TODO: global drag zone management, only way to make this behave consistently
 		if (not self.was_bar_hovering and self.bar_hovering) then
 			if self.kind == DIVIDER_HORIZONTAL then
-				window{cursor=unpod("b64:bHo0ACAAAAAeAAAA8A9weHUAQyAQEATwUwdwB0AHkAcg1yAHkAdAB3AH8EM=")}
+				self.cursor = unpod("b64:bHo0ACAAAAAeAAAA8A9weHUAQyAQEATwUwdwB0AHkAcg1yAHkAdAB3AH8EM=")
 			else
-				window{cursor=unpod("b64:bHo0ACgAAAAwAAAA_QhweHUAQyAQEATwBwfQJ7AHAAcAB8AH4AIAwMAHAAcAB7An0AfwCA==")}
+				self.cursor = unpod("b64:bHo0ACgAAAAwAAAA_QhweHUAQyAQEATwBwfQJ7AHAAcAB8AH4AIAwMAHAAcAB7An0AfwCA==")
 			end
 		elseif (not self.bar_hovering and self.was_bar_hovering) then
-			window{cursor=1}
+			self.cursor = 1
 		end
 
 		if (not self.dragging) then
@@ -96,29 +139,14 @@ function create_split_container(el)
 
 	function el:_create_empty_container()
 		local container = {
-			x=0,
-			y=0,
+			x = 0,
+			y = 0,
 			width = self.width,
 			height = self.height,
-			col = rnd(32)
+			col = rnd_not(32, theme.color.text)
 		}
 
 		return self:attach(container)
-	end
-
-	function el:attach_first(new_el)
-		self.first_element = self:_create_empty_container()
-		self.first_element:attach(new_el)
-		self:update_child_positioning()
-		return new_el
-		--assert(self.first_element)
-	end
-
-	function el:attach_second(new_el)
-		self.second_element = self:_create_empty_container()
-		self.second_element:attach(new_el)
-		self:update_child_positioning()
-		return new_el
 	end
 
 	function el:update_child_positioning()
@@ -127,25 +155,156 @@ function create_split_container(el)
 		local axis_position = self.axis_position
 		local axis_value = (self.kind == DIVIDER_HORIZONTAL and self.width) or self.height
 
-		--sassert(self.first_element)
-		--assert(self.second_element)
+		self.first_element.width = self.width
+		self.first_element.height = self.height
+		self.first_element[axis_key] = self.split_point
 
-		if self.first_element then
-			--assert(false)
-			self.first_element.width = self.width
-			self.first_element.height = self.height
-			self.first_element[axis_key] = self.split_point
-		end
-
-		if self.second_element then
-			--assert(false)
-			self.second_element.width = self.width
-			self.second_element.height = self.height
-			self.second_element[axis_key] = (axis_value - self.split_point)
-			self.second_element[axis_position] = self.split_point
-		end
+		self.second_element.width = self.width
+		self.second_element.height = self.height
+		self.second_element[axis_key] = (axis_value - self.split_point)
+		self.second_element[axis_position] = self.split_point
 
 	end
 
+	el = self:attach(el)
+	el.first_element = el:_create_empty_container()
+	el.second_element = el:_create_empty_container()
+	el:update_child_positioning()
+
 	return el
+end
+
+function create_tab_container(self, el)
+	el = default(el, {
+		tab_height = 12
+	})
+
+	--[[
+	el.x = el.x or 0
+	el.y = el.y or 0
+	el.width = el.width or 1
+	el.height = el.height or 1
+	]]
+	--el.tab_height = el.tab_height or 12
+
+	local tab_bar_container = {
+		x = 0,
+		y = 0,
+		height = el.tab_height,
+		width = el.width,
+	}
+
+	function tab_bar_container:hide_other_tabs(shown_tab)
+		for i in all(self.child) do
+			i.container.hidden = (i != shown_tab)
+		end
+	end
+
+	function tab_bar_container:update_tab_positions()
+		for i = 1, #self.child do
+			self.child[i].x = flr((i-1) * (self.width / #self.child))
+			self.child[i].width = ceil(self.width / #self.child)
+		end
+	end
+
+	function tab_bar_container:_create_tab(label, container)
+		local tab = {
+			x = 0,
+			y = 0,
+			height = self.height,
+			width = 0,
+			selected = false,
+			label = label or "<empty>",
+			container = container,
+			debug_color = rnd_not(32, theme.color.text)
+		}
+
+		function tab:draw()
+			rectfill(0, 0, self.width, self.height, self.debug_color)
+			print(self.label, 1, el.tab_height-6, theme.color.text)
+		end
+
+		function tab:click()
+			tab_bar_container:hide_other_tabs(self)
+			--self.container.hidden = false
+		end
+		
+		tab = self:attach(tab)
+		self:update_tab_positions()
+
+		return container, tab
+		--assert(self.attach)
+	end
+
+	function el:create_tab(title)
+		local container = {
+			x = 0,
+			y = self.tab_height,
+			width = self.width,
+			height = self.height - self.tab_height,
+			hidden = true
+		}
+
+		function container:draw()
+			--rectfill(0, 0, self.width,self.height, theme.color.text)
+		end
+
+		return tab_bar_container:_create_tab(title, self:attach(container))
+	end
+
+	function el:draw()
+		rectfill(0, 0, self.width,self.height, theme.color.background)
+	end
+
+	el = self:attach(el)
+	el:attach(tab_bar_container)
+	
+	return el
+end
+
+function create_slider(self, el)
+	el = default(el, {
+		height = 8,
+		value = 0,
+		grabber_width = 8,
+		quantize = 1
+		--grabber_height = 8
+	})
+
+	el.grabber_pos = 0
+	el.last_value = 0
+
+	function el:draw()
+		rectfill(0, 0, self.width, self.height, theme.color.secondary)
+		rectfill(self.grabber_pos, 0, self.grabber_width+self.grabber_pos, self.height, theme.color.primary)
+		
+		print(self.value,0,0,7)
+	end
+
+	function el:drag(msg)
+		--local held = msg.mb & 0b1 > 0 
+		local endpoint = self.width-self.grabber_width-1
+		local real_position = mid(0, msg.mx-(self.grabber_width/2), endpoint)
+		local real_value = real_position / endpoint
+		local quantized_value = round(real_value * 100 / self.quantize) * self.quantize / 100
+		local quantized_position = quantized_value * endpoint
+
+		self.grabber_pos = quantized_position
+		self.value = quantized_value
+
+		if self.value >= 0.99 then 
+			--self.value = 1 
+			self.grabber_pos = endpoint
+		end
+
+		if self.value == self.last_value then return end
+
+		if self.callback then
+			self.callback(self.value)
+		end
+
+		self.last_value = self.value
+	end
+
+	el = self:attach(el)
 end
