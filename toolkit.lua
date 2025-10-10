@@ -266,8 +266,9 @@ function create_slider(self, el)
 	el = default(el, {
 		height = 8,
 		value = 0,
-		grabber_width = 8,
-		quantize = 1
+		grabber_width = 17,
+		steps = 2,
+		smooth = false
 		--grabber_height = 8
 	})
 
@@ -276,26 +277,23 @@ function create_slider(self, el)
 
 	function el:draw()
 		rectfill(0, 0, self.width, self.height, theme.color.secondary)
-		rectfill(self.grabber_pos, 0, self.grabber_width+self.grabber_pos, self.height, theme.color.primary)
+		rectfill(self.grabber_pos, 0, self.grabber_width+self.grabber_pos-1, self.height, theme.color.primary)
 		
 		print(self.value,0,0,7)
 	end
 
 	function el:drag(msg)
 		--local held = msg.mb & 0b1 > 0 
-		local endpoint = self.width-self.grabber_width-1
+		local endpoint = self.width-self.grabber_width
 		local real_position = mid(0, msg.mx-(self.grabber_width/2), endpoint)
+		--local snaps = ceil(1/self.steps)
+
 		local real_value = real_position / endpoint
-		local quantized_value = round(real_value * 100 / self.quantize) * self.quantize / 100
-		local quantized_position = quantized_value * endpoint
+		local quantized_value = round(real_value * (self.steps)) --/ self.steps
+		local quantized_position = (quantized_value / (self.steps)) * (endpoint+1)
 
-		self.grabber_pos = quantized_position
-		self.value = quantized_value
-
-		if self.value >= 0.99 then 
-			--self.value = 1 
-			self.grabber_pos = endpoint
-		end
+		self.grabber_pos = ((self.steps == 0 or self.smooth) and real_position) or quantized_position
+		self.value = (self.steps == 0 and real_value) or quantized_value
 
 		if self.value == self.last_value then return end
 

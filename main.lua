@@ -117,7 +117,7 @@ create_split_container(sp1.first_element, {
 })
 
 create_slider(t4, {
-	width = 32,
+	width = 100,
 	height = 8
 })
 
