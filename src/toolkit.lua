@@ -413,29 +413,46 @@ function create_sfx_grid(self, el)
 	el.selection_kind = SELECTION_NONE
 
 	function el:draw()
-		for y = 1, self.cells_tall+1 do
-			rect(0, self.cell_height*y, self.width, self.cell_height*y, theme.color.primary)
+		if self.selection_kind == SELECTION_PATTERN then
+			self:draw_cell(0,self.hovered_row)
+		end
 
-			if y == self.cells_tall+1 then return end
+		if self.selection_kind == SELECTION_TRACK then
+			self:draw_cell(self.hovered_column,0)
+		end
 
-			for x = 1, self.cells_wide+1 do
-				if y == 1 then
-					print("t"..x, self.cell_width*x-1+3, 3, theme.color.text)
+		for y = 1, self.cells_tall do
+			if self.selection_kind == SELECTION_TRACK then
+				self:draw_cell(self.hovered_column,y)
+			end
+
+			for x = 1, self.cells_wide do
+				if y == self.hovered_row and self.selection_kind == SELECTION_PATTERN then
+					self:draw_cell(x,self.hovered_row)
 				end
-
-				if x == 1 then
-					print("p"..y, 2, self.cell_height*y+3, theme.color.text)
-				end
-
-				rect(self.cell_width*x-1, 0, self.cell_width*x-1, (self.cells_tall+1) * self.cell_height, theme.color.primary)
-				print((y-1)*self.cells_wide+x, self.cell_width*x-1+2, self.cell_height*y+3, theme.color.text)
 
 				if el.selection_kind == SELECTION_SFX and ((y-1)*self.cells_wide+(x-1)) == self.hovered_cell then
-					--assert(false)
-					rectfill(self.cell_width*x-1, self.cell_height*y+1, self.cell_width*(x+1)-1, self.cell_height*(y+1), theme.color.highlight)
-					print((y-1)*self.cells_wide+x, self.cell_width*x-1+2, self.cell_height*y+2, theme.color.text)
+					self:draw_cell(x,y)
 				end
+				
+				local sfx_str = string.format("%0x",(y-1)*self.cells_wide+x-1)
+				if #sfx_str < 2 then sfx_str = "0"..sfx_str end
+				print(sfx_str, self.cell_width*x-1+3, self.cell_height*y+3, theme.color.text)
 			end
+		end
+		
+		-- Row lines
+		for y = 1, self.cells_tall+1 do
+			rectfill(0, self.cell_height*y, self.width, self.cell_height*y, theme.color.primary)
+			if y == self.cells_tall+1 then break end
+			print("p"..y, 1, self.cell_height*y+3, theme.color.text)
+		end
+		
+		-- Column lines
+		for x = 1, self.cells_wide+1 do
+			rectfill(self.cell_width*x-1, 0, self.cell_width*x-1, self.cell_height * (self.cells_tall+1), theme.color.primary)
+			if x == self.cells_wide+1 then break end
+			print("t"..x, self.cell_width*x-1+3, 3, theme.color.text)
 		end
 	end
 
@@ -444,21 +461,26 @@ function create_sfx_grid(self, el)
 		local my = msg.my
 		local id = self:get_cell_id(mx, my)
 
-		if id != -1 then
-			self.hovered_cell = id
-			self.selection_kind = SELECTION_SFX
+		if mx < (self.cell_width) and (my > (self.cell_height) and my < (self.cell_height * (self.cells_tall+1))) then
+			self.hovered_row = flr(my / self.cell_height)
+			self.selection_kind = SELECTION_PATTERN
+			return
+		elseif mx > (self.cell_width) and my < (self.cell_height) then
+			self.hovered_column = flr(mx / self.cell_width)
+			self.selection_kind = SELECTION_TRACK
 			return
 		end
 
-		if mx < (self.cell_width) and my > (self.cell_height) then
-			self.hovered_column = (mx / self.cell_width)
-			self.selection_kind = SELECTION_TRACK
-		elseif mx < (el.cell_width) and my > (el.cell_height) then
-			self.hovered_row = (my / self.cell_height)
-			self.selection_kind = SELECTION_PATTERN
+		if id != -1 then
+			self.hovered_cell = id
+			self.selection_kind = SELECTION_SFX
 		else
 			self.selection_kind = SELECTION_NONE
 		end
+	end
+
+	function el:draw_cell(x,y)
+		rectfill(self.cell_width*x-1, self.cell_height*y+1, self.cell_width*(x+1)-1, self.cell_height*(y+1), theme.color.highlight)
 	end
 
 	function el:get_cell_id(mx,my)
