@@ -2,6 +2,11 @@
 DIVIDER_HORIZONTAL = 0
 DIVIDER_VERTICAL = 1
 
+local SELECTION_TRACK = 3
+local SELECTION_PATTERN = 2
+local SELECTION_SFX = 1
+local SELECTION_NONE = 0
+
 function create_label(self, el)
 	el = default(el, {
 		text = "<empty>"
@@ -213,15 +218,22 @@ function create_tab_container(self, el)
 			y = 0,
 			height = self.height,
 			width = 0,
-			selected = false,
+			--selected = false,
 			label = label or "<empty>",
 			container = container,
-			debug_color = rnd_not(32, theme.color.text)
+			color = rnd_not(32, theme.color.text)
 		}
 
-		function tab:draw()
-			rectfill(0, 0, self.width, self.height, self.debug_color)
+		function tab:draw(msg)
+			self.color = (not self.container.hidden) and theme.color.active or self.color
+
+			rectfill(0, 0, self.width, self.height, self.color)
 			print(self.label, 1, el.tab_height-6, theme.color.text)
+			self.color = theme.color.primary
+		end
+
+		function tab:hover()
+			self.color = theme.color.highlight
 		end
 
 		function tab:click()
@@ -274,15 +286,23 @@ function create_slider(self, el)
 
 	el.grabber_pos = 0
 	el.last_value = 0
+	el.color = theme.color.primary
 
 	function el:draw()
 		rectfill(0, 0, self.width, self.height, theme.color.secondary)
-		rectfill(self.grabber_pos, 0, self.grabber_width+self.grabber_pos-1, self.height, theme.color.primary)
+		rectfill(self.grabber_pos, 0, self.grabber_width+self.grabber_pos-1, self.height, self.color)
 		
 		print(self.value,0,0,7)
+
+		el.color = theme.color.primary
+	end
+
+	function el:hover()
+		el.color = theme.color.highlight
 	end
 
 	function el:drag(msg)
+		el.color = theme.color.active
 		--local held = msg.mb & 0b1 > 0 
 		local endpoint = self.width-self.grabber_width
 		local real_position = mid(0, msg.mx-(self.grabber_width/2), endpoint)
@@ -305,4 +325,150 @@ function create_slider(self, el)
 	end
 
 	el = self:attach(el)
+end
+
+function create_list(self, el)
+	el = default(el, {
+		show_indicies = true,
+		item_height = theme.metrics.font_height
+	})
+
+	el.items = {}
+
+	el = self:attach(el)
+
+	--TODO: margin code
+	local list_container = {
+		x = 0,
+		y = 0,
+		width = el.width,
+		height = el.height,
+		hover_item = -1,
+		selected_item = -1
+	}
+
+	function list_container:draw()
+		rectfill(0, 0, self.width, self.height, theme.color.secondary)
+
+		for i, v in ipairs(el.items) do
+			--TODO: generic list item drawing function
+			local color = (i == self.selected_item and theme.color.active) or (i == self.hover_item and theme.color.highlight) or theme.color.primary
+			rectfill(0, (i-1)*el.item_height, self.width, i*el.item_height-1, color)
+			print(el.show_indicies and (i.." "..v.label) or v.label, 1, (i-1)*el.item_height+1, theme.color.text)
+		end
+	end
+
+	function list_container:click(msg)
+		local idx = self:get_item_idx(msg.my)
+		local item = el.items[idx]
+
+		if not item then return end
+
+		list_container.selected_item = idx
+		
+		if item.callback then
+			item.callback()
+		end
+	end
+
+	function list_container:hover(msg)
+		local idx = self:get_item_idx(msg.my)
+
+		idx = (idx <= #el.items and idx) or -1
+		self.hover_item = self:get_item_idx(msg.my)
+	end
+
+	function list_container:get_item_idx(mouse_y)
+		return ceil(mouse_y / el.item_height)
+	end
+
+
+	function el:new_item(label, callback)
+		add(self.items, {
+			label = label,
+			callback = callback,
+		})
+
+		list_container.height = max(el.height, #self.items * self.item_height)
+	end
+
+	el:attach(list_container)
+
+	--TODO: custom scrollbars
+	el.scrollbars = el:attach_scrollbars()
+	return el
+end
+
+function create_sfx_grid(self, el)
+	el = self:attach(el)
+
+	el.cells_wide = 8
+	el.cells_tall = 5
+	el.cell_width = el.width / (el.cells_wide+1)
+	el.cell_height = 10
+	el.highlighted_cell = -1
+	el.hovered_cell = -1
+	el.hovered_row = -1
+	el.hovered_column = -1
+	el.selection_kind = SELECTION_NONE
+
+	function el:draw()
+		for y = 1, self.cells_tall+1 do
+			rect(0, self.cell_height*y, self.width, self.cell_height*y, theme.color.primary)
+
+			if y == self.cells_tall+1 then return end
+
+			for x = 1, self.cells_wide+1 do
+				if y == 1 then
+					print("t"..x, self.cell_width*x-1+3, 3, theme.color.text)
+				end
+
+				if x == 1 then
+					print("p"..y, 2, self.cell_height*y+3, theme.color.text)
+				end
+
+				rect(self.cell_width*x-1, 0, self.cell_width*x-1, (self.cells_tall+1) * self.cell_height, theme.color.primary)
+				print((y-1)*self.cells_wide+x, self.cell_width*x-1+2, self.cell_height*y+3, theme.color.text)
+
+				if el.selection_kind == SELECTION_SFX and ((y-1)*self.cells_wide+(x-1)) == self.hovered_cell then
+					--assert(false)
+					rectfill(self.cell_width*x-1, self.cell_height*y+1, self.cell_width*(x+1)-1, self.cell_height*(y+1), theme.color.highlight)
+					print((y-1)*self.cells_wide+x, self.cell_width*x-1+2, self.cell_height*y+2, theme.color.text)
+				end
+			end
+		end
+	end
+
+	function el:hover(msg)
+		local mx = msg.mx
+		local my = msg.my
+		local id = self:get_cell_id(mx, my)
+
+		if id != -1 then
+			self.hovered_cell = id
+			self.selection_kind = SELECTION_SFX
+			return
+		end
+
+		if mx < (self.cell_width) and my > (self.cell_height) then
+			self.hovered_column = (mx / self.cell_width)
+			self.selection_kind = SELECTION_TRACK
+		elseif mx < (el.cell_width) and my > (el.cell_height) then
+			self.hovered_row = (my / self.cell_height)
+			self.selection_kind = SELECTION_PATTERN
+		else
+			self.selection_kind = SELECTION_NONE
+		end
+	end
+
+	function el:get_cell_id(mx,my)
+		local x = flr(mx / self.cell_width) - 1
+		local y = flr(my / self.cell_height) - 1
+
+		if (x > -1 and x < self.cells_wide) and (y > -1 and y < self.cells_tall) then
+			return (y*self.cells_wide+x)
+		else
+			return -1
+		end
+	end
 end

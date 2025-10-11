@@ -54,9 +54,9 @@ sp2:attach_second(create_button({
 create_panel(g, {
 	x = 0,
 	y = 0,
-	width = 100,
+	width = 120,
 	height = 12,
-	color = rnd_not(32, theme.color.text)
+	color = theme.color.secondary
 })
 
 create_label(g, {
@@ -71,8 +71,8 @@ create_icon_button(g, {
 })
 
 local tc = create_tab_container(g, {
-	x=100,
-	width=380,
+	x=120,
+	width=360,
 	height=270,
 })
 
@@ -121,6 +121,24 @@ create_slider(t4, {
 	height = 8
 })
 
+local l1 = create_list(t4, {
+	x = 120,
+	width = 100,
+	height = 120,
+})
+
+l1:new_item("testing", function() end)
+l1:new_item("test", function() end)
+l1:new_item("t", function() end)
+l1:new_item("HELP", function() end)
+
+local g1 = create_sfx_grid(g, {
+	x = 1,
+	y = 100,
+	width = 117,
+	height = 120
+})
+
 function _update()
 	g:update_all()
 end
@@ -130,6 +148,9 @@ function _draw()
 	--print("hello world!!!\014testing\015testing again!")
 	--print("\014so this is a pretty small font, hopefully it can be somewhat readable!")
 	g:draw_all()
+	local cpu = flr(stat(1) * 100)/100
+	local ww = print(cpu,0,9999)
+	print(cpu,480-ww, 270-theme.metrics.font_height)
 end
 
 include("error_explorer.lua")
