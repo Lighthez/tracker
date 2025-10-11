@@ -148,9 +148,9 @@ function _draw()
 	--print("hello world!!!\014testing\015testing again!")
 	--print("\014so this is a pretty small font, hopefully it can be somewhat readable!")
 	g:draw_all()
-	local cpu = flr(stat(1) * 100)/100
+	local cpu = string.format("\014\^o0ffcpu: %.2f%%", stat(1) * 100)
 	local ww = print(cpu,0,9999)
-	print(cpu,480-ww, 270-theme.metrics.font_height)
+	print(cpu, 479-ww, 271-theme.metrics.font_height, 7)
 end
 
 include("src/error_explorer.lua")
