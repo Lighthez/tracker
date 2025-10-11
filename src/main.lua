@@ -1,6 +1,6 @@
-include("util.lua")
-include("theme.lua")
-include("toolkit.lua")
+include("src/util.lua")
+include("src/theme.lua")
+include("src/toolkit.lua")
 
 --local secondary_font = fetch("./fonts/micro.font")
 --secondary_font:poke(0x5600)
@@ -153,4 +153,4 @@ function _draw()
 	print(cpu,480-ww, 270-theme.metrics.font_height)
 end
 
-include("error_explorer.lua")
+include("src/error_explorer.lua")
