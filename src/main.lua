@@ -135,7 +135,7 @@ l1:new_item("HELP", function() end)
 local g1 = create_sfx_grid(g, {
 	x = 1,
 	y = 100,
-	width = 117,
+	width = 108,
 	height = 120
 })
 
