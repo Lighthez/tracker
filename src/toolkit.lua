@@ -432,29 +432,19 @@ function create_sfx_grid(self, el)
 		end
 
 		for y = 1, self.cells_tall do
-			if self.hover_kind == SELECTION_TRACK then
-				self:draw_cell(self.hovered_column, y, theme.color.highlight)
-			end
-
-			if self.selection_kind == SELECTION_TRACK then
-				self:draw_cell(self.selected_item, y, theme.color.active)
-			end
-
 			for x = 1, self.cells_wide do
-				if y ==self.selected_item and self.selection_kind == SELECTION_PATTERN then
-					self:draw_cell(x,self.selected_item, theme.color.active)
-				elseif y == self.hovered_row and self.hover_kind == SELECTION_PATTERN then
-					self:draw_cell(x,self.hovered_row, theme.color.highlight)
-				end
-				
 				local idx = ((y-1)*self.cells_wide+(x-1))
-
-				if el.selection_kind == SELECTION_SFX and idx == self.selected_item then
+				
+				if	(self.selection_kind == SELECTION_SFX and idx == self.selected_item) or
+					(self.selection_kind == SELECTION_TRACK and x == self.selected_item) or
+					(self.selection_kind == SELECTION_PATTERN and y == self.selected_item) then
 					self:draw_cell(x,y, theme.color.active)
-				elseif el.hover_kind == SELECTION_SFX and idx == self.hovered_cell then
+				elseif	(self.hover_kind == SELECTION_SFX and idx == self.hovered_cell) or
+					(self.hover_kind == SELECTION_TRACK and x == self.hovered_column) or
+					(self.hover_kind == SELECTION_PATTERN and y == self.hovered_row) then
 					self:draw_cell(x,y, theme.color.highlight)
 				end
-				
+
 				local sfx_str = string.format("%0x",(y-1)*self.cells_wide+x-1)
 				if #sfx_str < 2 then sfx_str = "0"..sfx_str end
 				print(sfx_str, self.cell_width*x-1+3, self.cell_height*y+3, theme.color.text)
@@ -557,3 +547,4 @@ function create_sfx_grid(self, el)
 		end
 	end
 end
+
