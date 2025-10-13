@@ -20,7 +20,7 @@ local function play_from(pattern, row, fade_length, channel_mask, row_channel)
 	local tracks = {}
 	local speeds = {}
 	local row_offsets = {}
-	local enabled = channel_mask or peek(0x30109 + pattern * 20)
+	local enabled = peek(0x30109 + pattern * 20) & channel_mask
 	local lowest_enabled
 	local tick_offset
 	for i = 0, 7 do
