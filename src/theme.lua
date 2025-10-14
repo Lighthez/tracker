@@ -1,5 +1,6 @@
 theme = {
 	color = {
+		selected = 10,
 		active = 12,
 		highlight = 6,
 		primary = 8,
