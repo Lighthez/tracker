@@ -1,4 +1,6 @@
-include("src/util.lua")
+fmt = string.format
+include("src/require.lua")
+include("src/sfxlib.lua")
 include("src/theme.lua")
 include("src/toolkit.lua")
 
@@ -7,6 +9,13 @@ include("src/toolkit.lua")
 --local primary_font = fetch("./fonts/sqrt.font")
 local primary_font = fetch("/system/fonts/p8.font")
 primary_font:poke(0x4000)
+
+function _init()
+	local sfx = sfx_interface()
+
+	notify(""..1)
+	notify(fmt("0x%X, 0x%X", sfx.patterns[0].track_mask, sfx.patterns[0].pattern_indices[0]))
+end
 
 --[[
 window{

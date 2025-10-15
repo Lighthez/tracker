@@ -1,3 +1,5 @@
+local default = require"src/util".default
+
 -- lib stuff goes here
 DIVIDER_HORIZONTAL = 0
 DIVIDER_VERTICAL = 1
@@ -148,7 +150,7 @@ function create_split_container(self, el)
 			y = 0,
 			width = self.width,
 			height = self.height,
-			col = rnd_not(32, theme.color.text)
+			col = theme.color.primary
 		}
 
 		return self:attach(container)
@@ -221,7 +223,7 @@ function create_tab_container(self, el)
 			--selected = false,
 			label = label or "<empty>",
 			container = container,
-			color = rnd_not(32, theme.color.text)
+			color = theme.color.primary,
 		}
 
 		function tab:draw(msg)
