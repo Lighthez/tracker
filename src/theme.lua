@@ -10,8 +10,8 @@ theme = {
 	},
 
 	metrics = {
-		font_height = 8,
+		font_height = 7,
 		margin = 2,
-		padding = 0
+		padding = 2
 	}
 }

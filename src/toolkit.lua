@@ -358,6 +358,8 @@ function create_list(self, el)
 			rectfill(0, (i-1)*el.item_height, self.width, i*el.item_height-1, color)
 			print(el.show_indicies and (i.." "..v.label) or v.label, 1, (i-1)*el.item_height+1, theme.color.text)
 		end
+
+		self.hover_item = -1
 	end
 
 	function list_container:click(msg)
@@ -416,7 +418,7 @@ function create_sfx_grid(self, el)
 	el.selection_kind = SELECTION_NONE
 	el.selected_item = -1
 
-	function el:draw()
+	function el:draw(msg)
 		if self.hover_kind == SELECTION_PATTERN then
 			self:draw_cell(0, self.hovered_row, theme.color.highlight)
 		end
@@ -449,23 +451,40 @@ function create_sfx_grid(self, el)
 
 				local sfx_str = string.format("%0x",(y-1)*self.cells_wide+x-1)
 				if #sfx_str < 2 then sfx_str = "0"..sfx_str end
-				print(sfx_str, self.cell_width*x-1+3, self.cell_height*y+3, theme.color.text)
+				--print(sfx_str, self.cell_width*x+1, self.cell_height*y+3, theme.color.text)
+				local v_even = y % 2 == 0
+				local h_even = x % 2 == 0
+				--TODO: Use theme colors for this.
+				print(sfx_str, self.cell_width*x+1, self.cell_height*y+3, v_even and (h_even and 11 or 26) or (h_even and 6 or 7))
+				--rectfill(self.cell_width*x+2, self.cell_height*y+9, self.cell_width*x+6, self.cell_height*y+9, 7)
 			end
 		end
 		
 		-- Row lines
 		for y = 1, self.cells_tall+1 do
-			rectfill(0, self.cell_height*y, self.width, self.cell_height*y, theme.color.primary)
+			--rectfill(0, self.cell_height*y, self.width, self.cell_height*y, theme.color.primary)	
 			if y == self.cells_tall+1 then break end
-			print("p"..y, 1, self.cell_height*y+3, theme.color.text)
+			print("p"..y, 1, self.cell_height*y+3, 28)
 		end
 		
 		-- Column lines
 		for x = 1, self.cells_wide+1 do
-			rectfill(self.cell_width*x-1, 0, self.cell_width*x-1, self.cell_height * (self.cells_tall+1), theme.color.primary)
+			--[[
+			fillp(0xa5a5)
+			rectfill(self.cell_width*x-1, 0, self.cell_width*x-1, self.cell_height * (self.cells_tall+1), 21 + (1 << 8))
+			fillp()
+			]]
+			--rectfill(self.cell_width*x-1, 0, self.cell_width*x-1, self.cell_height * (self.cells_tall+1), theme.color.primary)
 			if x == self.cells_wide+1 then break end
-			print("t"..x, self.cell_width*x-1+3, 3, theme.color.text)
+			print("t"..x, self.cell_width*x+1, 3, 28)
 		end
+	end
+
+	function el:update(msg)
+		local mx = msg.mx
+		local my = msg.my
+
+		self.hover_kind = ((mx < 0 or my < 0) or (mx > el.width or my > el.height)) and SELECTION_NONE or self.hover_kind
 	end
 
 	function el:hover(msg)
@@ -550,3 +569,28 @@ function create_sfx_grid(self, el)
 	end
 end
 
+function create_tracker(self, el)
+	el = self:attach(el)
+
+	el = default(el, {
+		track_rows = 16
+	})
+
+	function el:draw()
+		--rectfill(0,0,self.width,self.height,3)
+		for x = 0, 7 do
+			self:draw_track(x * 44 + theme.metrics.padding,40)
+		end
+		
+	end
+
+	function el:draw_track(x,width)
+		rectfill(x, theme.metrics.padding, x + width, self.height - theme.metrics.padding - 1, 0)
+
+		for y = 0, self.track_rows-1 do
+			print("xxxxxxxxxx", x+1, y * theme.metrics.font_height + theme.metrics.padding + 1, theme.color.text)
+		end
+	end
+
+	return el
+end

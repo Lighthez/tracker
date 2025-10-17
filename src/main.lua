@@ -1,6 +1,6 @@
 fmt = string.format
 include("src/require.lua")
-include("src/sfxlib.lua")
+--include("src/sfxlib.lua")
 include("src/theme.lua")
 include("src/toolkit.lua")
 
@@ -10,12 +10,14 @@ include("src/toolkit.lua")
 local primary_font = fetch("/system/fonts/p8.font")
 primary_font:poke(0x4000)
 
+--[[
 function _init()
 	local sfx = sfx_interface()
 
 	notify(""..1)
 	notify(fmt("0x%X, 0x%X", sfx.patterns[0].track_mask, sfx.patterns[0].pattern_indices[0]))
 end
+]]
 
 --[[
 window{
@@ -63,7 +65,7 @@ sp2:attach_second(create_button({
 create_panel(g, {
 	x = 0,
 	y = 0,
-	width = 120,
+	width = 100,
 	height = 12,
 	color = theme.color.secondary
 })
@@ -80,8 +82,8 @@ create_icon_button(g, {
 })
 
 local tc = create_tab_container(g, {
-	x=120,
-	width=360,
+	x=100,
+	width=380,
 	height=270,
 })
 
@@ -99,17 +101,27 @@ local btn = create_button(t2, {
 function btn:click()
 	notify("what?")
 end
-
+--[[
 tc2 = create_tab_container(t1, {
 	width=380,
 	height=262,
 })
+]]
 
+t1:attach_scrollbars()
+
+tracker = create_tracker(t1, {
+	width_rel = 1.0,
+	height_rel = 1.0
+})
+
+--[[
 tc2:create_tab("nesting testing")
 tc2:create_tab("woop")
 tc2:create_tab("more woop")
 tc2:create_tab("yay woop")
 tc2:create_tab("woop woop")
+]]
 
 local sp1 = create_split_container(t3, {
 	width_rel = 1.0,
@@ -144,7 +156,7 @@ l1:new_item("HELP", function() end)
 local g1 = create_sfx_grid(g, {
 	x = 1,
 	y = 100,
-	width = 108,
+	width = 90,
 	height = 120
 })
 
