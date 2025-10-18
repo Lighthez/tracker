@@ -65,14 +65,22 @@ sp2:attach_second(create_button({
 create_panel(g, {
 	x = 0,
 	y = 0,
-	width = 100,
+	width = 95,
 	height = 12,
 	color = theme.color.secondary
 })
 
+local sidebar = create_panel(g, {
+	x = 0,
+	y = 11,
+	width = 95,
+	height = 270-12,
+	color = theme.color.primary
+})
+
 create_label(g, {
-	x = 1,
-	y = 6,
+	x = 2,
+	y = 5,
 	text = "tracker"
 })
 
@@ -82,8 +90,8 @@ create_icon_button(g, {
 })
 
 local tc = create_tab_container(g, {
-	x=100,
-	width=380,
+	x=95,
+	width=385,
 	height=270,
 })
 
@@ -142,23 +150,36 @@ create_slider(t4, {
 	height = 8
 })
 
-local l1 = create_list(t4, {
-	x = 120,
-	width = 100,
-	height = 120,
+local g1 = create_sfx_grid(g, {
+	x = 0,
+	y = 188,
+	width = 95,
+	--height = 120
+})
+
+local l1 = create_list(g, {
+	x = 0,
+	y = 110,
+	width = 95,
+	height = 80,
 })
 
 l1:new_item("testing", function() end)
 l1:new_item("test", function() end)
 l1:new_item("t", function() end)
 l1:new_item("HELP", function() end)
-
-local g1 = create_sfx_grid(g, {
-	x = 1,
-	y = 100,
-	width = 90,
-	height = 120
-})
+l1:new_item("testing", function() end)
+l1:new_item("test", function() end)
+l1:new_item("t", function() end)
+l1:new_item("HELP", function() end)
+l1:new_item("testing", function() end)
+l1:new_item("test", function() end)
+l1:new_item("t", function() end)
+l1:new_item("HELP", function() end)
+l1:new_item("testing", function() end)
+l1:new_item("test", function() end)
+l1:new_item("t", function() end)
+l1:new_item("HELP", function() end)
 
 function _update()
 	g:update_all()
