@@ -23,7 +23,7 @@ function create_label(self, el)
 
 	return self:attach(el)
 end
-
+--[[
 function create_panel(self, el)
 	el = default(el, {
 		color = 12
@@ -36,12 +36,13 @@ function create_panel(self, el)
 
 	return self:attach(el)
 end
-
+]]
 function create_button(self, el)
 	el = self:attach_button(el)
 
 	function el:draw()
 		rectfill(0,0,self.width,self.height,theme.color.secondary)
+		rect(0,0,self.width-1,self.height-1, theme.color.border)
 		print(self.label,1,1,theme.color.text)
 	end
 
@@ -210,8 +211,8 @@ function create_tab_container(self, el)
 
 	function tab_bar_container:update_tab_positions()
 		for i = 1, #self.child do
-			self.child[i].x = ceil((i-1) * (self.width / #self.child))
-			self.child[i].width = ceil(self.width / #self.child)
+			self.child[i].x = flr((i-1) * (self.width / #self.child))
+			self.child[i].width = flr(self.width / #self.child)
 		end
 	end
 
@@ -231,8 +232,8 @@ function create_tab_container(self, el)
 			self.color = (not self.container.hidden) and theme.color.active or self.color
 
 			rectfill(0, 0, self.width, self.height, self.color)
-			rect(-1, 0, self.width-2, self.height-1, theme.color.border)
-			print(self.label, 1, el.tab_height-7, theme.color.text)
+			rect(0, 0, self.width, self.height-1, theme.color.border)
+			print(self.label, 2, el.tab_height-7, theme.color.text)
 			self.color = theme.color.primary
 		end
 
@@ -296,7 +297,9 @@ function create_slider(self, el)
 	function el:draw()
 		rectfill(0, 0, self.width, self.height, theme.color.secondary)
 		rectfill(self.grabber_pos, 0, self.grabber_width+self.grabber_pos-1, self.height, self.color)
-		
+		rect(self.grabber_pos, 0, self.grabber_width+self.grabber_pos-1, self.height, theme.color.border)
+
+		rect(0, 0, self.width-1, self.height-1, theme.color.border)
 		print(self.value,0,0,7)
 
 		el.color = theme.color.primary
@@ -427,7 +430,7 @@ function create_sfx_grid(self, el)
 	el.selected_item = -1
 	el.selected_row = -1
 
-	el.height = el.cells_tall * el.cell_height + 1
+	--el.height = el.cells_tall * el.cell_height + 1
 
 	function el:draw(msg)
 		if self.hover_kind == SELECTION_PATTERN then
@@ -494,7 +497,7 @@ function create_sfx_grid(self, el)
 			print("t"..x, self.cell_width*x+1, 3, 28)
 		end
 
-		rect(0,0,self.width-1,self.height-1,theme.color.border)
+		--rect(0,0,self.width-1,self.height-1,theme.color.border)
 	end
 
 	function el:update(msg)
@@ -586,6 +589,8 @@ function create_sfx_grid(self, el)
 			return -1
 		end
 	end
+
+	return el
 end
 
 function create_tracker(self, el)
@@ -615,4 +620,9 @@ function create_tracker(self, el)
 	end
 
 	return el
+end
+
+function draw_panel(x,y,width,height)
+	rectfill(x,y,x+width,y+height-1,theme.color.primary)
+	rect(x,y,x+width,y+height-1,theme.color.border)
 end

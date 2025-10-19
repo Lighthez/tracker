@@ -26,42 +26,8 @@ window{
 ]]
 
 g = create_gui()
+
 --[[
-local sp = g:attach(create_split_container({
-	--width=480,
-	--height=270,
-	height_rel = 1.0,
-	width_rel = 1.0,
-	kind=DIVIDER_VERTICAL,
-	split_point = 135
-}))
-
-sp:attach_first(create_button({
-	label="play!",
-	x=0,
-	y=0,
-}))
-
-local sp2 = sp:attach_second(create_split_container({
-	height_rel = 1.0,
-	width = 480,
-	kind=DIVIDER_HORIZONTAL,
-	split_point = 100
-}))
-
-sp2:attach_first(create_button({
-	label="play!",
-	x=0,
-	y=0,
-}))
-
-sp2:attach_second(create_button({
-	label="play!",
-	x=0,
-	y=0,
-}))
-]]
-
 create_panel(g, {
 	x = 0,
 	y = 0,
@@ -77,17 +43,51 @@ local sidebar = create_panel(g, {
 	height = 270-12,
 	color = theme.color.primary
 })
-
+]]
+--[[
 create_label(g, {
 	x = 2,
 	y = 5,
 	text = "tracker"
 })
+]]
 
 create_icon_button(g, {
 	x = 1,
 	y = 13
 })
+
+
+sfx_grid = create_sfx_grid(g, {
+	x = 1,
+	y = 189,
+	width = 96,
+	height = 80
+})
+
+local l1 = create_list(g, {
+	x = 0,
+	y = 110,
+	width = 96,
+	height = 80,
+})
+
+l1:new_item("testing", function() end)
+l1:new_item("test", function() end)
+l1:new_item("t", function() end)
+l1:new_item("HELP", function() end)
+l1:new_item("testing", function() end)
+l1:new_item("test", function() end)
+l1:new_item("t", function() end)
+l1:new_item("HELP", function() end)
+l1:new_item("testing", function() end)
+l1:new_item("test", function() end)
+l1:new_item("t", function() end)
+l1:new_item("HELP", function() end)
+l1:new_item("testing", function() end)
+l1:new_item("test", function() end)
+l1:new_item("t", function() end)
+l1:new_item("HELP", function() end)
 
 local tc = create_tab_container(g, {
 	x=95,
@@ -150,49 +150,24 @@ create_slider(t4, {
 	height = 8
 })
 
-local g1 = create_sfx_grid(g, {
-	x = 0,
-	y = 188,
-	width = 95,
-	--height = 120
-})
-
-local l1 = create_list(g, {
-	x = 0,
-	y = 110,
-	width = 95,
-	height = 80,
-})
-
-l1:new_item("testing", function() end)
-l1:new_item("test", function() end)
-l1:new_item("t", function() end)
-l1:new_item("HELP", function() end)
-l1:new_item("testing", function() end)
-l1:new_item("test", function() end)
-l1:new_item("t", function() end)
-l1:new_item("HELP", function() end)
-l1:new_item("testing", function() end)
-l1:new_item("test", function() end)
-l1:new_item("t", function() end)
-l1:new_item("HELP", function() end)
-l1:new_item("testing", function() end)
-l1:new_item("test", function() end)
-l1:new_item("t", function() end)
-l1:new_item("HELP", function() end)
-
 function _update()
 	g:update_all()
 end
 
 function _draw()
 	cls(1)
+
+	draw_panel(0, 0, 95, 12)
+	draw_panel(0,189, 96, 270-189)
+	print("tracker", 2, 5, theme.color.text)
+
 	--print("hello world!!!\014testing\015testing again!")
 	--print("\014so this is a pretty small font, hopefully it can be somewhat readable!")
 	g:draw_all()
 	local cpu = string.format("\014\^o0ffcpu: %.2f%%", stat(1) * 100)
 	local ww = print(cpu,0,9999)
 	print(cpu, 479-ww, 271-theme.metrics.font_height, 7)
+
 end
 
 include("src/error_explorer.lua")

@@ -6,7 +6,7 @@ theme = {
 		primary = 5,
 		secondary = 9,
 		background = 21,
-		border = 1,
+		border = 13,
 		text = 7
 	},
 
