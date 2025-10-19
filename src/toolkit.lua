@@ -31,6 +31,7 @@ function create_panel(self, el)
 
 	function el:draw()
 		rectfill(0,0,self.width,self.height,self.color)
+		rect(0, 0, self.width-1, self.height-1,theme.color.border)
 	end
 
 	return self:attach(el)
@@ -209,7 +210,7 @@ function create_tab_container(self, el)
 
 	function tab_bar_container:update_tab_positions()
 		for i = 1, #self.child do
-			self.child[i].x = flr((i-1) * (self.width / #self.child))
+			self.child[i].x = ceil((i-1) * (self.width / #self.child))
 			self.child[i].width = ceil(self.width / #self.child)
 		end
 	end
@@ -230,7 +231,8 @@ function create_tab_container(self, el)
 			self.color = (not self.container.hidden) and theme.color.active or self.color
 
 			rectfill(0, 0, self.width, self.height, self.color)
-			print(self.label, 1, el.tab_height-6, theme.color.text)
+			rect(-1, 0, self.width-2, self.height-1, theme.color.border)
+			print(self.label, 1, el.tab_height-7, theme.color.text)
 			self.color = theme.color.primary
 		end
 
@@ -267,7 +269,8 @@ function create_tab_container(self, el)
 	end
 
 	function el:draw()
-		rectfill(0, 0, self.width,self.height, theme.color.background)
+		rectfill(0, self.tab_height, self.width,self.height, theme.color.background)
+		rect(0, 0, self.width-1, self.height-1, theme.color.border)
 	end
 
 	el = self:attach(el)
@@ -330,6 +333,8 @@ function create_slider(self, el)
 end
 
 function create_list(self, el)
+	--TODO: scrollbars, remove list_container
+
 	el = default(el, {
 		show_indicies = true,
 		item_height = theme.metrics.font_height
@@ -350,14 +355,17 @@ function create_list(self, el)
 	}
 
 	function list_container:draw()
-		rectfill(0, 0, self.width, self.height, theme.color.secondary)
+		--rectfill(0, 0, self.width, self.height, theme.color.secondary)
 
 		for i, v in ipairs(el.items) do
 			--TODO: generic list item drawing function
-			local color = (i == self.selected_item and theme.color.active) or (i == self.hover_item and theme.color.highlight) or theme.color.primary
-			rectfill(0, (i-1)*el.item_height, self.width, i*el.item_height-1, color)
-			print(el.show_indicies and (i.." "..v.label) or v.label, 1, (i-1)*el.item_height+1, theme.color.text)
+			local color = (i == self.selected_item and theme.color.active) or (i == self.hover_item and theme.color.highlight) or theme.color.secondary
+			rectfill(1, (i-1)*(el.item_height+1)+1, self.width-1, i*(el.item_height+1)-1, color)
+			rectfill(1, i*(el.item_height+1), self.width-1, i*(el.item_height+1), theme.color.border)
+			print(el.show_indicies and (i.." "..v.label) or v.label, 2, (i-1)*(el.item_height+1)+2, theme.color.text)
 		end
+
+		rect(0, 0, self.width-1, self.height-1, theme.color.border)
 
 		self.hover_item = -1
 	end
@@ -383,9 +391,8 @@ function create_list(self, el)
 	end
 
 	function list_container:get_item_idx(mouse_y)
-		return ceil(mouse_y / el.item_height)
+		return ceil(mouse_y / (el.item_height+1))
 	end
-
 
 	function el:new_item(label, callback)
 		add(self.items, {
@@ -393,13 +400,14 @@ function create_list(self, el)
 			callback = callback,
 		})
 
-		list_container.height = max(el.height, #self.items * self.item_height)
+		list_container.height = min(el.height, #self.items * self.item_height)
 	end
+
 
 	el:attach(list_container)
 
 	--TODO: custom scrollbars
-	el.scrollbars = el:attach_scrollbars()
+	--el.scrollbars = el:attach_scrollbars()
 	return el
 end
 
@@ -407,9 +415,9 @@ function create_sfx_grid(self, el)
 	el = self:attach(el)
 
 	el.cells_wide = 8
-	el.cells_tall = 5
-	el.cell_width = el.width / (el.cells_wide+1)
-	el.cell_height = 10
+	el.cells_tall = 9
+	el.cell_width = el.width \ (el.cells_wide+1) - 1
+	el.cell_height = 9
 	el.highlighted_cell = -1
 	el.hovered_cell = -1
 	el.hovered_row = -1
@@ -417,6 +425,9 @@ function create_sfx_grid(self, el)
 	el.hover_kind = SELECTION_NONE
 	el.selection_kind = SELECTION_NONE
 	el.selected_item = -1
+	el.selected_row = -1
+
+	el.height = el.cells_tall * el.cell_height + 1
 
 	function el:draw(msg)
 		if self.hover_kind == SELECTION_PATTERN then
@@ -462,9 +473,13 @@ function create_sfx_grid(self, el)
 		
 		-- Row lines
 		for y = 1, self.cells_tall+1 do
-			--rectfill(0, self.cell_height*y, self.width, self.cell_height*y, theme.color.primary)	
+			if self.selected_row == y then
+				rect(-1, self.cell_height*y+1, self.width, self.cell_height*(y+1), theme.color.active)
+			end
+			--rectfill(0, self.cell_height*y, self.width, self.cell_height*y, theme.color.secondary)	
 			if y == self.cells_tall+1 then break end
-			print("p"..y, 1, self.cell_height*y+3, 28)
+			local pattern_str = string.format("%0x",y-1)
+			print("p"..pattern_str, 1, self.cell_height*y+3, 28)
 		end
 		
 		-- Column lines
@@ -474,10 +489,12 @@ function create_sfx_grid(self, el)
 			rectfill(self.cell_width*x-1, 0, self.cell_width*x-1, self.cell_height * (self.cells_tall+1), 21 + (1 << 8))
 			fillp()
 			]]
-			--rectfill(self.cell_width*x-1, 0, self.cell_width*x-1, self.cell_height * (self.cells_tall+1), theme.color.primary)
+			--rectfill(self.cell_width*x-1, 0, self.cell_width*x-1, self.cell_height * (self.cells_tall+1), theme.color.secondary)
 			if x == self.cells_wide+1 then break end
 			print("t"..x, self.cell_width*x+1, 3, 28)
 		end
+
+		rect(0,0,self.width-1,self.height-1,theme.color.border)
 	end
 
 	function el:update(msg)
@@ -515,6 +532,7 @@ function create_sfx_grid(self, el)
 		
 		if self.hover_kind == SELECTION_NONE then
 			self.selected_item = -1
+			self.selected_row = -1
 			self.selection_kind = SELECTION_NONE
 
 			selection = {-1}
@@ -536,6 +554,7 @@ function create_sfx_grid(self, el)
 			end
 		elseif self.hover_kind == SELECTION_PATTERN then
 			self.selected_item = self.hovered_row
+			self.selected_row = self.hovered_row
 			self.selection_kind = SELECTION_PATTERN
 
 			for x = 1, self.cells_wide do
@@ -554,7 +573,7 @@ function create_sfx_grid(self, el)
 	end
 
 	function el:draw_cell(x,y,c)
-		rectfill(self.cell_width*x-1, self.cell_height*y+1, self.cell_width*(x+1)-1, self.cell_height*(y+1), c)
+		rectfill(self.cell_width*x, self.cell_height*y+1, self.cell_width*(x+1)-1, self.cell_height*(y+1), c)
 	end
 
 	function el:get_cell_id(mx,my)
@@ -579,7 +598,7 @@ function create_tracker(self, el)
 	function el:draw()
 		--rectfill(0,0,self.width,self.height,3)
 		for x = 0, 7 do
-			self:draw_track(x * 44 + theme.metrics.padding,40)
+			self:draw_track(x * 47 + 2,43)
 		end
 		
 	end
@@ -588,7 +607,10 @@ function create_tracker(self, el)
 		rectfill(x, theme.metrics.padding, x + width, self.height - theme.metrics.padding - 1, 0)
 
 		for y = 0, self.track_rows-1 do
-			print("xxxxxxxxxx", x+1, y * theme.metrics.font_height + theme.metrics.padding + 1, theme.color.text)
+			local xx = print("xxx", x+1, y * theme.metrics.font_height + theme.metrics.padding + 1, theme.color.text)
+			xx = print("xx", xx+1, y * theme.metrics.font_height + theme.metrics.padding + 1, theme.color.text)
+			xx = print("xx", xx+1, y * theme.metrics.font_height + theme.metrics.padding + 1, theme.color.text)
+			print("xxx", xx+1, y * theme.metrics.font_height + theme.metrics.padding + 1, theme.color.text)
 		end
 	end
 
