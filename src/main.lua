@@ -12,7 +12,7 @@ primary_font:poke(0x4000)
 
 --[[
 function _init()
-	local sfx = sfx_interface()
+	local sfx = new_sfx_interface()
 
 	notify(""..1)
 	notify(fmt("0x%X, 0x%X", sfx.patterns[0].track_mask, sfx.patterns[0].pattern_indices[0]))
