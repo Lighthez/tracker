@@ -61,7 +61,7 @@ create_icon_button(g, {
 sfx_grid = create_sfx_grid(g, {
 	x = 1,
 	y = 189,
-	width = 96,
+	width = 95,
 	height = 80
 })
 
@@ -159,6 +159,7 @@ function _draw()
 
 	draw_panel(0, 0, 95, 12)
 	draw_panel(0,189, 96, 270-189)
+	draw_panel(95, 11, 480-96, 270-11)
 	print("tracker", 2, 5, theme.color.text)
 
 	--print("hello world!!!\014testing\015testing again!")

@@ -203,6 +203,10 @@ function create_tab_container(self, el)
 		width = el.width,
 	}
 
+	function tab_bar_container:draw()
+		rect(self.width-1, 0, self.width-1, self.height-1, theme.color.border)
+	end
+
 	function tab_bar_container:hide_other_tabs(shown_tab)
 		for i in all(self.child) do
 			i.container.hidden = (i != shown_tab)
@@ -270,8 +274,8 @@ function create_tab_container(self, el)
 	end
 
 	function el:draw()
-		rectfill(0, self.tab_height, self.width,self.height, theme.color.background)
-		rect(0, 0, self.width-1, self.height-1, theme.color.border)
+		--rectfill(0, self.tab_height, self.width,self.height, theme.color.background)
+		
 	end
 
 	el = self:attach(el)
