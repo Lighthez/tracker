@@ -25,6 +25,8 @@ window{
 }
 ]]
 
+--local request_redraw = true
+
 g = create_gui()
 
 --[[
@@ -94,7 +96,7 @@ local tc = create_tab_container(g, {
 	height=270,
 })
 
-t1 = tc:create_tab("test")
+t1 = tc:create_tab("test", true)
 t2 = tc:create_tab("testing")
 t3 = tc:create_tab("testinger")
 t4 = tc:create_tab("testingest")
@@ -154,24 +156,30 @@ function _update()
 end
 
 function _draw()
-	cls(1)
+	--cls(1)
+
+	draw_background_layer()
+	
+	--print("hello world!!!\014testing\015testing again!")
+	--print("\014so this is a pretty small font, hopefully it can be somewhat readable!")
+	g:draw_all()
+	local cpu = string.format("\014\^o0ffcpu: %06.2f%%", stat(1) * 100)
+	local ww = print(cpu,0,9999)
+	rectfill(479-50, 271-theme.metrics.font_height-1, 480, 270, 0)
+	print(cpu, 479-ww, 271-theme.metrics.font_height, 7)
+
+end
+
+function draw_background_layer()
+	--if not request_redraw then return end
+	--request_redraw = false
 
 	draw_panel(0, 0, 95, 12)
 	print("tracker", 2, 5, theme.color.text)
 
 	draw_panel(0,109, 96, 80)
 	draw_panel(0,189, 96, 270-189)
-	
 	draw_panel(95, 11, 480-96, 270-11)
-	
-
-	--print("hello world!!!\014testing\015testing again!")
-	--print("\014so this is a pretty small font, hopefully it can be somewhat readable!")
-	g:draw_all()
-	local cpu = string.format("\014\^o0ffcpu: %.2f%%", stat(1) * 100)
-	local ww = print(cpu,0,9999)
-	print(cpu, 479-ww, 271-theme.metrics.font_height, 7)
-
 end
 
 include("src/error_explorer.lua")

@@ -260,7 +260,7 @@ function create_tab_container(self, el)
 		--assert(self.attach)
 	end
 
-	function el:create_tab(title)
+	function el:create_tab(title, switch)
 		local container = {
 			x = 0,
 			y = self.tab_height-1,
@@ -269,11 +269,19 @@ function create_tab_container(self, el)
 			hidden = true
 		}
 
+		local tab
+
 		function container:draw()
 			--rectfill(0, 0, self.width,self.height, theme.color.text)
 		end
 
-		return tab_bar_container:_create_tab(title, self:attach(container))
+		container, tab = tab_bar_container:_create_tab(title, self:attach(container))
+
+		if switch then
+			tab_bar_container:hide_other_tabs(tab)
+		end
+
+		return container, tab
 	end
 
 	function el:draw()
@@ -685,19 +693,20 @@ function create_tracker(self, el)
 	function el:draw()
 		--rectfill(0,0,self.width,self.height,3)
 		for x = 0, 7 do
-			self:draw_track(x * 47 + 2,43)
+			self:draw_track(x * 47 + 2,44)
 		end
 		
 	end
 
 	function el:draw_track(x,width)
-		rectfill(x, theme.metrics.padding, x + width, self.height - theme.metrics.padding - 1, 0)
+		rectfill(x, theme.metrics.padding, x + width, self.height - theme.metrics.padding , 0)
 
 		for y = 0, self.track_rows-1 do
 			local xx = print("xxx", x+1, y * theme.metrics.font_height + theme.metrics.padding + 1, theme.color.text)
 			xx = print("xx", xx+1, y * theme.metrics.font_height + theme.metrics.padding + 1, theme.color.text)
 			xx = print("xx", xx+1, y * theme.metrics.font_height + theme.metrics.padding + 1, theme.color.text)
-			print("xxx", xx+1, y * theme.metrics.font_height + theme.metrics.padding + 1, theme.color.text)
+			xx = print("x", xx+1, y * theme.metrics.font_height + theme.metrics.padding + 1, theme.color.text)
+			print("xx", xx+1, y * theme.metrics.font_height + theme.metrics.padding + 1, theme.color.text)
 		end
 	end
 
