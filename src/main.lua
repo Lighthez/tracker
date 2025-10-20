@@ -61,16 +61,17 @@ create_icon_button(g, {
 
 local l1 = create_list(g, {
 	x = 1,
-	y = 110,
+	y = 104,
 	width = 94,
 	height = 79,
 })
 
 sfx_grid = create_sfx_grid(g, {
 	x = 1,
-	y = 189,
+	y = 183,
 	width = 94,
-	height = 80
+	height = 86,
+	cells_tall = 8
 })
 
 l1:new_item("this is sixteen ch", function() end)
@@ -148,7 +149,9 @@ create_split_container(sp1.first_element, {
 
 create_slider(t4, {
 	width = 100,
-	height = 8
+	height = 8,
+	grabber_size = 11,
+	steps = 0
 })
 
 function _update()
@@ -177,8 +180,8 @@ function draw_background_layer()
 	draw_panel(0, 0, 95, 12)
 	print("tracker", 2, 5, theme.color.text)
 
-	draw_panel(0,109, 96, 80)
-	draw_panel(0,189, 96, 270-189)
+	draw_panel(0,103, 96, 80)
+	draw_panel(0,183, 96, 270-183)
 	draw_panel(95, 11, 480-96, 270-11)
 end
 

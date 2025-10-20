@@ -330,14 +330,15 @@ function create_slider(self, el)
 
 		if wy == 0 or self.disabled then return end
 
-		self:scroll_to(self.value - wy)
+		self:scroll_to_abs(self.value - wy)
 	end
 
-	function el:scroll_to(v)
+	function el:scroll_to_abs(v)
+		-- DOES NOT WORK WITH STEPS = 0
 		local endpoint = self:get_axis_endpoint()
 		local real_position = mid(0, v, (self.steps == 0 or self.smooth) and endpoint or self.steps)
 
-		self.grabber_pos = (self.steps == 0 or self.smooth) and real_position or (real_position / self.steps) * (endpoint+1)
+		self.grabber_pos = (self.steps == 0 or self.smooth) and real_position or (real_position / self.steps) * endpoint
 
 		self:update_value(real_position)
 	end
@@ -363,7 +364,7 @@ function create_slider(self, el)
 
 		local real_value = real_position / endpoint
 		local quantized_value = round(real_value * (self.steps)) --/ self.steps
-		local quantized_position = (quantized_value / (self.steps)) * (endpoint+1)
+		local quantized_position = (quantized_value / (self.steps)) * endpoint
 
 		self.grabber_pos = ((self.steps == 0 or self.smooth) and real_position) or quantized_position
 		self.value = (self.steps == 0 and real_value) or quantized_value
@@ -462,7 +463,7 @@ function create_list(self, el)
 		if msg.mx > (self.width - theme.metrics.scrollbar_width) then return end
 
 		if wy != 0 then
-			self.scrollbar:scroll_to(mid(0, self.scroll - wy, self.scroll_limit))
+			self.scrollbar:scroll_to_abs(mid(0, self.scroll - wy, self.scroll_limit))
 		end
 
 		local idx = self:get_item_idx(msg.my)
@@ -496,6 +497,7 @@ function create_list(self, el)
 		y = -1,
 		width = theme.metrics.scrollbar_width,
 		height = el.height + 2,
+		--grabber_size = 8,
 		callback = function(index)
 			el.scroll = index
 		end
@@ -511,6 +513,7 @@ function create_sfx_grid(self, el)
 	el.cells_tall = 9
 	el.cell_width = el.width \ (el.cells_wide+1) - 1
 	el.cell_height = 9
+	el.pattern_count = 128
 	el.highlighted_cell = -1
 	el.hovered_cell = -1
 	el.hovered_row = -1
@@ -519,42 +522,51 @@ function create_sfx_grid(self, el)
 	el.selection_kind = SELECTION_NONE
 	el.selected_item = -1
 	el.selected_row = -1
+	el.selected_items = {}
+	el.offset_x = 5
+	el.offset_y = 2
+	el.scroll = 0
 
 	--el.height = el.cells_tall * el.cell_height + 1
 
 	function el:draw(msg)
-		if self.hover_kind == SELECTION_PATTERN then
-			self:draw_cell(0, self.hovered_row, theme.color.highlight)
+		camera(-self.sx-self.offset_x, -self.sy-self.offset_y)
+
+		local rel_pattern_selection = self.selected_item - self.scroll
+		local rel_pattern_hover = self.hovered_row - self.scroll
+
+		if self.hover_kind == SELECTION_PATTERN and (rel_pattern_hover > 0)  then
+			self:draw_cell(0, rel_pattern_hover, theme.color.highlight)
 		end
 
 		if self.hover_kind == SELECTION_TRACK then
 			self:draw_cell(self.hovered_column, 0, theme.color.highlight)
 		end
 
-		if self.selection_kind == SELECTION_PATTERN then
-			self:draw_cell(0, self.selected_item, theme.color.active)
+		if self.selection_kind == SELECTION_PATTERN and (rel_pattern_selection > 0) then
+			self:draw_cell(0, rel_pattern_selection, theme.color.active)
 		end
 
 		if self.selection_kind == SELECTION_TRACK then
 			self:draw_cell(self.selected_item, 0, theme.color.active)
 		end
 
-		for y = 1, self.cells_tall do
+		for y = 1, self.cells_tall-1 do
 			for x = 1, self.cells_wide do
-				local idx = ((y-1)*self.cells_wide+(x-1))
+				local idx = (((y + self.scroll)-1)*self.cells_wide+(x-1))
 				
 				if	(self.selection_kind == SELECTION_SFX and idx == self.selected_item) or
 					(self.selection_kind == SELECTION_TRACK and x == self.selected_item) or
-					(self.selection_kind == SELECTION_PATTERN and y == self.selected_item) then
-					self:draw_cell(x,y, theme.color.active)
+					(self.selection_kind == SELECTION_PATTERN and (y + self.scroll) == self.selected_item) then
+					--self:draw_cell(x,y, theme.color.active)
 				elseif	(self.hover_kind == SELECTION_SFX and idx == self.hovered_cell) or
 					(self.hover_kind == SELECTION_TRACK and x == self.hovered_column) or
-					(self.hover_kind == SELECTION_PATTERN and y == self.hovered_row) then
+					(self.hover_kind == SELECTION_PATTERN and (y + self.scroll) == self.hovered_row) then
 					self:draw_cell(x,y, theme.color.highlight)
 				end
 
-				local sfx_str = string.format("%0x",(y-1)*self.cells_wide+x-1)
-				if #sfx_str < 2 then sfx_str = "0"..sfx_str end
+				local sfx_str = string.format("%02x",((y+self.scroll)-1)*self.cells_wide+x-1)
+				--if #sfx_str < 2 then sfx_str = "0"..sfx_str end
 				--print(sfx_str, self.cell_width*x+1, self.cell_height*y+3, theme.color.text)
 				local v_even = y % 2 == 0
 				local h_even = x % 2 == 0
@@ -563,16 +575,30 @@ function create_sfx_grid(self, el)
 				--rectfill(self.cell_width*x+2, self.cell_height*y+9, self.cell_width*x+6, self.cell_height*y+9, 7)
 			end
 		end
+
+		--TODO: optimize, move to a x,y table
+		for i in all(self.selected_items) do
+			if i >= 0 then
+				--local ri = i - 1
+				local x = i % self.cells_wide + 1
+				local y = (i \ self.cells_wide) - self.scroll + 1
+				self:draw_cell(x, y, theme.color.active)
+
+				local sfx_str = string.format("%02x",((y+self.scroll)-1)*self.cells_wide+x-1)
+				print(sfx_str, self.cell_width*x+1, self.cell_height*y+3, 12)
+			end
+		end
 		
 		-- Row lines
 		for y = 1, self.cells_tall+1 do
-			if self.selected_row == y then
-				rect(-1, self.cell_height*y+1, self.width, self.cell_height*(y+1), theme.color.active)
+			local ry = y + self.scroll
+			if self.selected_row == ry then
+				rect(-5, self.cell_height*y+1, self.cell_width*(self.cells_wide + 1), self.cell_height*(y+1), theme.color.active)
 			end
 			--rectfill(0, self.cell_height*y, self.width, self.cell_height*y, theme.color.secondary)	
 			if y == self.cells_tall+1 then break end
-			local pattern_str = string.format("%0x",y-1)
-			print("p"..pattern_str, 1, self.cell_height*y+3, 28)
+			local pattern_str = string.format("%02x",ry-1)
+			print("p"..pattern_str, -3, self.cell_height*y+3, 28)
 		end
 		
 		-- Column lines
@@ -591,22 +617,32 @@ function create_sfx_grid(self, el)
 	end
 
 	function el:update(msg)
-		local mx = msg.mx
-		local my = msg.my
+		local mx = msg.mx -- self.offset_x
+		local my = msg.my -- self.offset_y
 
 		self.hover_kind = ((mx < 0 or my < 0) or (mx > el.width or my > el.height)) and SELECTION_NONE or self.hover_kind
 	end
 
-	function el:hover(msg)
-		local mx = msg.mx
-		local my = msg.my
-		local id = self:get_cell_id(mx, my)
+	--function el:draw(msg)
+	--	rectfill(0,0,self.width,self.height,9)
+	--end
 
-		if mx < (self.cell_width) and (my > (self.cell_height) and my < (self.cell_height * (self.cells_tall+1))) then
-			self.hovered_row = flr(my / self.cell_height)
+	function el:hover(msg)
+		--notify("help me ehlp helas lakdjflaöla lvövvxmewioroeirtnmcnvw")
+		local _, _, _, _, wy = mouse()
+		local mx = msg.mx - self.offset_x
+		local my = msg.my - self.offset_y
+		local id = self:get_cell_id(mx, my) + (self.scroll * self.cells_wide)
+
+		if msg.mx < (self.width - theme.metrics.scrollbar_width) and wy != 0 then
+			self.scrollbar:scroll_to_abs(self.scroll - wy)
+		end
+
+		if mx < (self.cell_width) and (my > self.cell_height and my < (self.cell_height * self.cells_tall)) then
+			self.hovered_row = flr(my / self.cell_height) + self.scroll
 			self.hover_kind = SELECTION_PATTERN
 			return
-		elseif mx > (self.cell_width) and my < (self.cell_height) then
+		elseif mx > (self.cell_width) and mx < (self.cell_width * (self.cells_wide + 1)) and my < (self.cell_height) then
 			self.hovered_column = flr(mx / self.cell_width)
 			self.hover_kind = SELECTION_TRACK
 			return
@@ -621,27 +657,38 @@ function create_sfx_grid(self, el)
 	end
 
 	function el:click()
-		local selection = {}
-		
+		--local selection = {}
+
 		if self.hover_kind == SELECTION_NONE then
 			self.selected_item = -1
 			self.selected_row = -1
 			self.selection_kind = SELECTION_NONE
 
-			selection = {-1}
+			self.selected_items = {}
 		elseif self.hover_kind == SELECTION_SFX then
 			self.selected_item = self.hovered_cell
 			self.selection_kind = SELECTION_SFX
 
-			selection = {self.selected_item}
+			if not key("shift") then 
+				self.selected_items = {}
+			end
+
+			--self.selected_items = {self.selected_item}
+			add(self.selected_items, self.selected_item)
 		elseif self.hover_kind == SELECTION_TRACK then
 			self.selected_item = self.hovered_column
 			self.selection_kind = SELECTION_TRACK
 
+			if not key("shift") then 
+				self.selected_items = {}
+			end
+
 			for x = 1, self.cells_wide do
-				for y = 1, self.cells_tall do
+				for y = 1, self.pattern_count do
 					if x == self.hovered_column then
-						add(selection, (y*self.cells_wide+x))
+						local idx = ((y-1)*self.cells_wide+x) - 1
+
+						add(self.selected_items, idx)
 					end
 				end
 			end
@@ -650,10 +697,16 @@ function create_sfx_grid(self, el)
 			self.selected_row = self.hovered_row
 			self.selection_kind = SELECTION_PATTERN
 
+			if not key("shift") then 
+				self.selected_items = {}
+			end
+
 			for x = 1, self.cells_wide do
 				for y = 1, self.cells_tall do
 					if y == self.hovered_row then
-						add(selection, (y*self.cells_wide+x))
+						local idx = ((y-1)*self.cells_wide+x) - 1
+
+						add(self.selected_items, idx)
 					end
 				end
 			end
@@ -661,24 +714,42 @@ function create_sfx_grid(self, el)
 
 		--TODO: multi selection
 		if self.callback then
-			self.callback(selection)
+			self.callback(self.selected_items)
 		end
 	end
 
 	function el:draw_cell(x,y,c)
-		rectfill(self.cell_width*x, self.cell_height*y+1, self.cell_width*(x+1)-1, self.cell_height*(y+1), c)
+		-- incredibly ugly hack for pattern labels
+
+		if x != 0 then
+			rectfill(self.cell_width*x, self.cell_height*y+1, self.cell_width*(x+1)-1, self.cell_height*(y+1), c)	
+		else
+			rectfill(self.cell_width*x-4, self.cell_height*y+1, self.cell_width*(x+1)+3, self.cell_height*(y+1), c)	
+		end
 	end
 
 	function el:get_cell_id(mx,my)
 		local x = flr(mx / self.cell_width) - 1
 		local y = flr(my / self.cell_height) - 1
 
-		if (x > -1 and x < self.cells_wide) and (y > -1 and y < self.cells_tall) then
+		if (x > -1 and x < self.cells_wide) and (y > -1 and y < (self.cells_tall-1)) then
 			return (y*self.cells_wide+x)
 		else
 			return -1
 		end
 	end
+
+	el.scrollbar = create_slider(el, {
+		axis = SLIDER_VERTICAL,
+		x = el.width - theme.metrics.scrollbar_width + 1,
+		y = 0,
+		width = theme.metrics.scrollbar_width,
+		height = el.height + 1,
+		steps = el.pattern_count - el.cells_tall + 1,
+		callback = function(index)
+			el.scroll = index
+		end
+	})
 
 	return el
 end
@@ -699,7 +770,7 @@ function create_tracker(self, el)
 	end
 
 	function el:draw_track(x,width)
-		rectfill(x, theme.metrics.padding, x + width, self.height - theme.metrics.padding , 0)
+		rectfill(x, theme.metrics.padding, x + width, self.height - theme.metrics.padding, 0)
 
 		for y = 0, self.track_rows-1 do
 			local xx = print("xxx", x+1, y * theme.metrics.font_height + theme.metrics.padding + 1, theme.color.text)

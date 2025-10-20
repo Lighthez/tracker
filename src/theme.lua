@@ -2,11 +2,11 @@ theme = {
 	color = {
 		selected = 10,
 		active = 25,
-		highlight = 10,
+		highlight = 22,
 		primary = 5,
 		secondary = 9,
 		background = 21,
-		border = 13,
+		border = 21,
 		text = 7
 	},
 
