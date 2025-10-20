@@ -57,6 +57,12 @@ create_icon_button(g, {
 	y = 13
 })
 
+local l1 = create_list(g, {
+	x = 1,
+	y = 110,
+	width = 94,
+	height = 79,
+})
 
 sfx_grid = create_sfx_grid(g, {
 	x = 1,
@@ -65,14 +71,7 @@ sfx_grid = create_sfx_grid(g, {
 	height = 80
 })
 
-local l1 = create_list(g, {
-	x = 1,
-	y = 109,
-	width = 94,
-	height = 80,
-})
-
-l1:new_item("testing", function() end)
+l1:new_item("this is sixteen ch", function() end)
 l1:new_item("test", function() end)
 l1:new_item("t", function() end)
 l1:new_item("HELP", function() end)
