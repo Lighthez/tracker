@@ -4,6 +4,9 @@ local default = require"src/util".default
 DIVIDER_HORIZONTAL = 0
 DIVIDER_VERTICAL = 1
 
+SLIDER_HORIZONTAL = 0
+SLIDER_VERTICAL = 1
+
 local SELECTION_TRACK = 3
 local SELECTION_PATTERN = 2
 local SELECTION_SFX = 1
@@ -260,7 +263,7 @@ function create_tab_container(self, el)
 	function el:create_tab(title)
 		local container = {
 			x = 0,
-			y = self.tab_height,
+			y = self.tab_height-1,
 			width = self.width,
 			height = self.height - self.tab_height,
 			hidden = true
@@ -288,8 +291,9 @@ function create_slider(self, el)
 	el = default(el, {
 		height = 8,
 		value = 0,
-		grabber_width = 17,
+		grabber_size = 17,
 		steps = 2,
+		axis = SLIDER_HORIZONTAL,
 		smooth = false
 		--grabber_height = 8
 	})
@@ -300,8 +304,8 @@ function create_slider(self, el)
 
 	function el:draw()
 		rectfill(0, 0, self.width, self.height, theme.color.secondary)
-		rectfill(self.grabber_pos, 0, self.grabber_width+self.grabber_pos-1, self.height, self.color)
-		rect(self.grabber_pos, 0, self.grabber_width+self.grabber_pos-1, self.height, theme.color.border)
+		
+		el:draw_nub()
 
 		rect(0, 0, self.width-1, self.height-1, theme.color.border)
 		print(self.value,0,0,7)
@@ -309,15 +313,35 @@ function create_slider(self, el)
 		el.color = theme.color.primary
 	end
 
-	function el:hover()
+	function el:hover(msg)
+		local _, _, _, _, wy = mouse()
 		el.color = theme.color.highlight
+
+		if wy == 0 then return end
+
+		self.value -= wy
+		local endpoint = self:get_axis_endpoint()
+		local real_position = mid(0, self.value, (self.steps == 0 or self.smooth) and endpoint or self.steps)
+
+		self.grabber_pos = (self.steps == 0 or self.smooth) and real_position or (real_position / self.steps) * (endpoint+1)
+		self.value = real_position
+
+		self:update_value(real_position)
+	end
+	
+	function el:update_value()
+		if self.callback then
+			self.callback(self.value)
+		end
+
+		self.last_value = self.value
 	end
 
 	function el:drag(msg)
 		el.color = theme.color.active
 		--local held = msg.mb & 0b1 > 0 
-		local endpoint = self.width-self.grabber_width
-		local real_position = mid(0, msg.mx-(self.grabber_width/2), endpoint)
+		local endpoint = self:get_axis_endpoint()
+		local real_position = mid(0, el:get_axis_value(msg), endpoint)
 		--local snaps = ceil(1/self.steps)
 
 		local real_value = real_position / endpoint
@@ -329,14 +353,38 @@ function create_slider(self, el)
 
 		if self.value == self.last_value then return end
 
-		if self.callback then
-			self.callback(self.value)
-		end
-
-		self.last_value = self.value
+		self:update_value()
 	end
 
-	el = self:attach(el)
+	if el.axis == SLIDER_HORIZONTAL then
+		function el:get_axis_endpoint()
+			return self.width-self.grabber_size
+		end
+
+		function el:get_axis_value(msg)
+			return msg.mx-(self.grabber_size/2)
+		end
+
+		function el:draw_nub()
+			rectfill(self.grabber_pos, 0, self.grabber_size+self.grabber_pos-1, self.height, self.color)
+			rect(self.grabber_pos, 0, self.grabber_size+self.grabber_pos-1, self.height, theme.color.border)
+		end
+	elseif el.axis == SLIDER_VERTICAL then
+		function el:get_axis_endpoint()
+			return self.height-self.grabber_size
+		end
+
+		function el:get_axis_value(msg)
+			return msg.my-(self.grabber_size/2)
+		end
+
+		function el:draw_nub()
+			rectfill(0, self.grabber_pos, self.width, self.grabber_size+self.grabber_pos-1, self.color)
+			rect(0, self.grabber_pos, self.width, self.grabber_size+self.grabber_pos-1, theme.color.border)
+		end
+	end
+
+	return self:attach(el)
 end
 
 function create_list(self, el)
@@ -344,61 +392,92 @@ function create_list(self, el)
 
 	el = default(el, {
 		show_indicies = true,
-		item_height = theme.metrics.font_height
+		index_padding = 2,
+		item_height = theme.metrics.font_height,
 	})
 
 	el.items = {}
+	el.hover_item = -1
+	el.selected_item = -1
+	el.scroll = 0
 
 	el = self:attach(el)
 
-	--TODO: margin code
-	local list_container = {
-		x = 0,
-		y = 0,
-		width = el.width,
-		height = el.height,
-		hover_item = -1,
-		selected_item = -1
-	}
+	--el.width = el.width - theme.metrics.scrollbar_width
 
-	function list_container:draw()
+	--TODO: margin code
+	function el:draw()
 		--rectfill(0, 0, self.width, self.height, theme.color.secondary)
 
+		--[[
 		for i, v in ipairs(el.items) do
 			--TODO: generic list item drawing function
 			local color = (i == self.selected_item and theme.color.active) or (i == self.hover_item and theme.color.highlight) or theme.color.secondary
-			rectfill(1, (i-1)*(el.item_height+1)+1, self.width-1, i*(el.item_height+1)-1, color)
-			rectfill(1, i*(el.item_height+1), self.width-1, i*(el.item_height+1), theme.color.border)
-			print(el.show_indicies and (i.." "..v.label) or v.label, 2, (i-1)*(el.item_height+1)+2, theme.color.text)
+			rectfill(0, (i-1)*(el.item_height+1)+1, self.width-1, i*(el.item_height+1)-1, color)
+			rectfill(0, i*(el.item_height+1), self.width-1, i*(el.item_height+1), theme.color.border)
+
+			if el.index_padding > 0 then
+				local prefix = string.format("%0"..el.index_padding.."x %s", i, v.label)
+				print(prefix, 1, (i-1)*(el.item_height+1)+2, theme.color.text)
+			else
+				print(el.show_indicies and (i.." "..v.label) or v.label, 1, (i-1)*(el.item_height+1)+2, theme.color.text)
+			end
+		end
+		]]
+
+		--for i = (self.scroll + 1), flr(self.item_height / self.height) do
+		for i = 1, flr(self.height / self.item_height) - 1 do
+			--assert(v)
+			local real_idx = i + self.scroll
+			local v = self.items[real_idx]
+
+			if not v then break end
+
+			local color = (real_idx == self.selected_item and theme.color.active) or (real_idx == self.hover_item and theme.color.highlight) or theme.color.secondary
+			rectfill(0, (i-1)*(self.item_height+1)+1, self.width-1, i*(self.item_height+1)-1, color)
+			rectfill(0, i*(self.item_height+1), self.width-1, i*(self.item_height+1), theme.color.border)
+
+			if self.index_padding > 0 then
+				local prefix = string.format("%0"..self.index_padding.."x %s", real_idx, v.label)
+				print(prefix, 1, (i-1)*(self.item_height+1)+2, theme.color.text)
+			else
+				print(self.show_indicies and (real_idx.." "..v.label) or v.label, 1, (i-1)*(self.item_height+1)+2, theme.color.text)
+			end
 		end
 
-		rect(0, 0, self.width-1, self.height-1, theme.color.border)
+		--rect(0, 0, self.width-1, self.height-1, theme.color.border)
+
+		--draw_integrated_scrollbar(self)
 
 		self.hover_item = -1
 	end
 
-	function list_container:click(msg)
+	function el:click(msg)
+		if msg.mx > (self.width - theme.metrics.scrollbar_width) then return end
+
 		local idx = self:get_item_idx(msg.my)
 		local item = el.items[idx]
 
 		if not item then return end
 
-		list_container.selected_item = idx
+		self.selected_item = idx
 		
 		if item.callback then
 			item.callback()
 		end
 	end
 
-	function list_container:hover(msg)
+	function el:hover(msg)
+		if msg.mx > (self.width - theme.metrics.scrollbar_width) then return end
+
 		local idx = self:get_item_idx(msg.my)
 
 		idx = (idx <= #el.items and idx) or -1
 		self.hover_item = self:get_item_idx(msg.my)
 	end
 
-	function list_container:get_item_idx(mouse_y)
-		return ceil(mouse_y / (el.item_height+1))
+	function el:get_item_idx(mouse_y)
+		return ceil(mouse_y / (el.item_height+1)) + self.scroll
 	end
 
 	function el:new_item(label, callback)
@@ -407,11 +486,21 @@ function create_list(self, el)
 			callback = callback,
 		})
 
-		list_container.height = min(el.height, #self.items * self.item_height)
+		self.scrollbar.steps = (#self.items - flr(self.height / self.item_height) + 1)
+		--self.height = min(el.height, #self.items * self.item_height)
 	end
 
+	el.scrollbar = create_slider(el, {
+		axis = SLIDER_VERTICAL,
+		x = el.width - theme.metrics.scrollbar_width + 1,
+		width = theme.metrics.scrollbar_width,
+		height = el.height+1,
+		callback = function(index)
+			el.scroll = index
+		end
+	})
 
-	el:attach(list_container)
+	--el:attach(list_container)
 
 	--TODO: custom scrollbars
 	--el.scrollbars = el:attach_scrollbars()
@@ -624,6 +713,15 @@ function create_tracker(self, el)
 	end
 
 	return el
+end
+
+function draw_integrated_scrollbar(el)
+	rectfill(el.width, 0, el.width-theme.metrics.scrollbar_width, el.height, theme.color.secondary)
+	rect(el.width, 0, el.width-theme.metrics.scrollbar_width, el.height, theme.color.border)
+end
+
+function create_scrollbar(self, el)
+	el = create_slider(self, el)
 end
 
 function draw_panel(x,y,width,height)

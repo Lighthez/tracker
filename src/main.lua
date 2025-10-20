@@ -61,14 +61,14 @@ create_icon_button(g, {
 sfx_grid = create_sfx_grid(g, {
 	x = 1,
 	y = 189,
-	width = 95,
+	width = 94,
 	height = 80
 })
 
 local l1 = create_list(g, {
-	x = 0,
-	y = 110,
-	width = 96,
+	x = 1,
+	y = 109,
+	width = 94,
 	height = 80,
 })
 
@@ -158,9 +158,13 @@ function _draw()
 	cls(1)
 
 	draw_panel(0, 0, 95, 12)
-	draw_panel(0,189, 96, 270-189)
-	draw_panel(95, 11, 480-96, 270-11)
 	print("tracker", 2, 5, theme.color.text)
+
+	draw_panel(0,109, 96, 80)
+	draw_panel(0,189, 96, 270-189)
+	
+	draw_panel(95, 11, 480-96, 270-11)
+	
 
 	--print("hello world!!!\014testing\015testing again!")
 	--print("\014so this is a pretty small font, hopefully it can be somewhat readable!")

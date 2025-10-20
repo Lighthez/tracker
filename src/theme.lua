@@ -12,6 +12,7 @@ theme = {
 
 	metrics = {
 		font_height = 7,
+		scrollbar_width = 8,
 		margin = 2,
 		padding = 2
 	}
