@@ -54,10 +54,12 @@ create_label(g, {
 })
 ]]
 
-create_icon_button(g, {
-	x = 1,
-	y = 13
+--[[create_icon_button(g, {
+	x = 5,
+	y = 16
 })
+]]
+
 
 local l1 = create_list(g, {
 	x = 1,
@@ -97,10 +99,10 @@ local tc = create_tab_container(g, {
 	height=270,
 })
 
-t1 = tc:create_tab("test", true)
-t2 = tc:create_tab("testing")
-t3 = tc:create_tab("testinger")
-t4 = tc:create_tab("testingest")
+t1 = tc:create_tab("pattern", true)
+t2 = tc:create_tab("sfx")
+t3 = tc:create_tab("instrument")
+t4 = tc:create_tab("wave")
 
 local btn = create_button(t2, {
 	x=0,
@@ -118,7 +120,7 @@ tc2 = create_tab_container(t1, {
 })
 ]]
 
-t1:attach_scrollbars()
+--t1:attach_scrollbars()
 
 tracker = create_tracker(t1, {
 	width_rel = 1.0,
@@ -180,6 +182,7 @@ function draw_background_layer()
 	draw_panel(0, 0, 95, 12)
 	print("tracker", 2, 5, theme.color.text)
 
+	draw_panel(0,11, 96, 93)
 	draw_panel(0,103, 96, 80)
 	draw_panel(0,183, 96, 270-183)
 	draw_panel(95, 11, 480-96, 270-11)

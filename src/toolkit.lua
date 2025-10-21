@@ -758,28 +758,40 @@ function create_tracker(self, el)
 	el = self:attach(el)
 
 	el = default(el, {
-		track_rows = 16
+		track_rows = 16,
+		track_extra_padding = 2
 	})
 
 	function el:draw()
 		--rectfill(0,0,self.width,self.height,3)
 		for x = 0, 7 do
-			self:draw_track(x * 47 + 2,44)
+			self:draw_track(x * 46 + 6,43)
 		end
-		
 	end
 
 	function el:draw_track(x,width)
-		rectfill(x, theme.metrics.padding, x + width, self.height - theme.metrics.padding, 0)
+		rectfill(x, theme.metrics.padding + self.track_extra_padding, x + width, self.height - theme.metrics.padding - self.track_extra_padding, 0)
 
 		for y = 0, self.track_rows-1 do
-			local xx = print("xxx", x+1, y * theme.metrics.font_height + theme.metrics.padding + 1, theme.color.text)
-			xx = print("xx", xx+1, y * theme.metrics.font_height + theme.metrics.padding + 1, theme.color.text)
-			xx = print("xx", xx+1, y * theme.metrics.font_height + theme.metrics.padding + 1, theme.color.text)
-			xx = print("x", xx+1, y * theme.metrics.font_height + theme.metrics.padding + 1, theme.color.text)
-			print("xx", xx+1, y * theme.metrics.font_height + theme.metrics.padding + 1, theme.color.text)
+			local xx = print("xxx", x+1, y * theme.metrics.font_height + theme.metrics.padding + self.track_extra_padding + 1, theme.color.text)
+			xx = print("xx", xx+1, y * theme.metrics.font_height + theme.metrics.padding + self.track_extra_padding + 1, theme.color.text)
+			xx = print("xx", xx+1, y * theme.metrics.font_height + theme.metrics.padding + self.track_extra_padding + 1, theme.color.text)
+			--xx = print("x", xx+1, y * theme.metrics.font_height + theme.metrics.padding + 1, theme.color.text)
+			print("xxx", xx+1, y * theme.metrics.font_height + theme.metrics.padding + self.track_extra_padding + 1, theme.color.text)
 		end
 	end
+
+	el.scrollbar = create_slider(el, {
+		axis = SLIDER_VERTICAL,
+		x = el.width - theme.metrics.scrollbar_width,
+		y = 0,
+		width = theme.metrics.scrollbar_width,
+		height = el.height + 1,
+		--steps = el.pattern_count - el.cells_tall + 1,
+		callback = function(index)
+			el.scroll = index
+		end
+	})
 
 	return el
 end
