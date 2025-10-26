@@ -1,80 +1,45 @@
-local copy = require "src/util".copy
-
---- @class Pattern
---- @field pattern_length integer
---- @field flow integer
---- @field track_mask integer
---- @field pattern_indices integer[]
-
---- @class Track
---- @field length integer
---- @field tick_rate integer
---- @field loop0 integer
---- @field loop1 integer
---- @field delay integer
---- @field flags integer
---- @field track_data TrackData
-
---- @class TrackData
---- @field pitches integer[]
---- @field instruments integer[]
---- @field volumes integer[]
---- @field effects integer[]
---- @field effect_params integer[]
-
---- @class Instrument
---- @field nodes Node[]
---- @field envelopes Envelope[]
---- @field wavetables Wavetable[]
-
---- @class Node
---- @field parent integer
---- @field operator integer
---- @field kind integer
---- @field kind_p integer
---- @field flags integer
---- @field parameter_values [NodeParam]
-
---- @class NodeParam
---- @field flags integer
---- @field val0 integer
---- @field val1 integer
---- @field envelope_index integer
---- @field scale integer
-
---- @alias EnvelopeType 0 | 1 | 2
-
---- @class Envelope
---- @field kind EnvelopeType
---- @field flags integer
---- @field tick_rate integer
---- @field loop0 integer
---- @field loop1 integer
---- @field start integer
-
---- @class Wavetable
---- @field address integer
---- @field width_bits integer
---- @field height integer
-
 local PATTERN_COUNT <const> = 128
 local TRACK_ROWS <const> = 64
 local TRACK_COUNT <const> = 384
 local INSTRUMENT_COUNT <const> = 64
+local NODE_COUNT <const> = 8
+local NODE_PARAMETER_COUNT <const> = 7
+local ENVELOPE_COUNT <const> = 8
+local WAVETABLE_COUNT <const> = 4
+local CHANNEL_COUNT <const> = 8
 
 local PATTERN_BYTES <const> = 20
 local ROW_BYTES <const> = 5
 local TRACK_BYTES <const> = 8 + ROW_BYTES * TRACK_ROWS
 local INSTRUMENT_BYTES <const> = 512
+local NODE_BYTES <const> = 32
+local NODE_PARAMETER_BYTES <const> = 4
+local ENVELOPE_BYTES <const> = 24
+local WAVETABLE_BYTES <const> = 4
+local INSTRUMENT_NAME_BYTES <const> = 16
 
-local TYPE_HALF_LOWER <const> = -1
-local TYPE_HALF_HIGHER <const> = 0
-local TYPE_U8 <const> = 1
-local TYPE_I8 <const> = 2
-local TYPE_I16 <const> = 3
-local TYPE_U16 <const> = 4
-local TYPE_I32 <const> = 5
-local TYPE_INSTRUMENT_NAME <const> = 6
+--- @alias PointerType |
+--- |-1 u4 (lower)
+--- |0 u4 (Higher)
+--- |1 u8
+--- |2 i8
+--- |3 i16
+--- |4 u16
+--- |5 i32
+--- |6 Instrument name
+
+--- @class Pointer An absolute or relative address of a number.
+--- @field [1] integer The address or address offset.
+--- @field [2] PointerType The type located at the address.
+
+local TYPE_HALF_LOWER <const> = -1 --- @type PointerType
+local TYPE_HALF_HIGHER <const> = 0 --- @type PointerType
+local TYPE_U8 <const> = 1 --- @type PointerType
+local TYPE_I8 <const> = 2 --- @type PointerType
+local TYPE_I16 <const> = 3 --- @type PointerType
+local TYPE_U16 <const> = 4 --- @type PointerType
+local TYPE_I32 <const> = 5 --- @type PointerType
+local TYPE_INSTRUMENT_NAME <const> = 6 --- @type PointerType
 
 local index_layout = {
 	num_instruments = { 0, TYPE_I16 },
@@ -84,48 +49,36 @@ local index_layout = {
 	instruments_address = { 8, TYPE_I32 },
 	tracks_address = { 12, TYPE_I32 },
 	patterns_address = { 16, TYPE_I32 },
-	-- 4 bytes unused...
+	-- 4 unused bytes
 	tick_length = { 24, TYPE_I16 },
 	default_track_length = { 26, TYPE_I16 },
 	default_track_speed = { 28, TYPE_U8 },
-	-- 3 bytes unused...
-	patterns = {},
-	tracks = {},
-	instruments = {}
 }
 
 local pattern_layout = {
 	pattern_length = { 0, TYPE_I16 },
 	flow = { 2, TYPE_U8 },
 	track_mask = { 3, TYPE_U8 },
-	pattern_indicies = {
-		{ 4,  TYPE_I16 },
-		{ 6,  TYPE_I16 },
-		{ 8,  TYPE_I16 },
-		{ 10, TYPE_I16 },
-		{ 12, TYPE_I16 },
-		{ 14, TYPE_I16 },
-		{ 16, TYPE_I16 },
-		{ 18, TYPE_I16 },
-	}
+	-- Pattern indices, i16 * 8
 }
 
 local track_layout = {
 	length = { 0, TYPE_I16 },
-	speed = { 1, TYPE_U8 },
-	loop_point_1 = { 2, TYPE_U8 },
-	loop_point_2 = { 3, TYPE_U8 },
-	delay = { 4, TYPE_I8 },
-	flags = { 5, TYPE_U8 },
-	track_data = {}
+	speed = { 2, TYPE_U8 },
+	loop_point_1 = { 3, TYPE_U8 },
+	loop_point_2 = { 4, TYPE_U8 },
+	delay = { 5, TYPE_I8 },
+	flags = { 6, TYPE_U8 },
+	-- 1 unused byte
+	-- Track content
 }
 
-local node_layout = {
+local node_parameter_layout = {
 	flags = { 0, TYPE_U8 },
 	value_1 = { 1, TYPE_U8 },
 	value_2 = { 2, TYPE_U8 },
 	envelope = { 3, TYPE_HALF_LOWER },
-	scale = { 3, TYPE_HALF_HIGHER }
+	scale = { 3, TYPE_HALF_HIGHER },
 }
 
 local node_layout = {
@@ -135,7 +88,7 @@ local node_layout = {
 	subtype = { 1, TYPE_HALF_HIGHER },
 	flags = { 2, TYPE_U8 },
 	-- 1 unused byte
-	parameter_values = {}
+	-- Node parameters (x7)
 }
 
 local envelope_layout = {
@@ -153,21 +106,20 @@ local envelope_layout = {
 	freq = { 12, TYPE_U8 },
 	phase = { 13, TYPE_U8 },
 	func = { 14, TYPE_U8 },
-	data = {}
 }
 
 local wavetable_layout = {
 	address = { 0, TYPE_I16 },
 	width_bits = { 2, TYPE_U8 },
-	height = { 3, TYPE_U8 }
+	height = { 3, TYPE_U8 },
 }
 
 local instrument_layout = {
-	nodes = {},
-	envelopes = {},
-	wavetables = {},
-	-- 32 bytes unused...
-	name = { 496, TYPE_INSTRUMENT_NAME }
+	-- 8 nodes
+	-- 8 envelopes
+	-- 32 unused bytes
+	-- 4 wavetable definitions
+	name = { 496, TYPE_INSTRUMENT_NAME },
 }
 
 --- Reads a nibble from the high or low half of the byte at a given memory address.
@@ -189,13 +141,15 @@ local function pokehalf(addr, value, high)
 	)
 end
 
-local function poke16(addr, value)
-	poke8(addr, value)
-	poke8(addr+8, value >> 32)
+local function peek_instrument_name(addr)
+	return string.char(peek(addr, INSTRUMENT_NAME_BYTES))
 end
 
-local function peek_text(addr)
-	return string.char(peek(addr, 16))
+local function poke_instrument_name(addr, value)
+	for i = 0, INSTRUMENT_NAME_BYTES - 1 do
+		local byte = i < #value and string.byte(value, i + 1) or 0
+		poke(addr + i, byte)
+	end
 end
 
 --- Reads one or more signed bytes from the given memory address.
@@ -218,6 +172,7 @@ local function peeki8(addr, count)
 	return unpack(i8s)
 end
 
+--- @type table<PointerType, fun(address: integer): any>
 local peek_funcs = {
 	[TYPE_HALF_LOWER] = peekhalf,
 	[TYPE_HALF_HIGHER] = function(a) return peekhalf(a, true) end,
@@ -226,8 +181,9 @@ local peek_funcs = {
 	[TYPE_U16] = peek2,
 	[TYPE_I16] = peek2,
 	[TYPE_I32] = peek4,
-	[TYPE_INSTRUMENT_NAME] = peek_text
+	[TYPE_INSTRUMENT_NAME] = peek_instrument_name
 }
+--- @type table<PointerType, fun(address: integer, value: any)>
 local poke_funcs = {
 	[TYPE_HALF_LOWER] = pokehalf,
 	[TYPE_HALF_HIGHER] = function(a, v) return pokehalf(a, v, true) end,
@@ -236,69 +192,91 @@ local poke_funcs = {
 	[TYPE_U16] = poke2,
 	[TYPE_I16] = poke2,
 	[TYPE_I32] = poke4,
-	[TYPE_INSTRUMENT_NAME] = poke16
+	[TYPE_INSTRUMENT_NAME] = poke_instrument_name
 }
 
+--- Fetches a value stored at a pointer
+--- @param pointer Pointer The pointer.
+--- @param offset integer The offset added to the pointer's address.
+--- @return any
 local function dereference_get(pointer, offset)
 	offset = offset or 0
 	return peek_funcs[pointer[2]](pointer[1] + offset)
 end
 
+--- Sets a value stored at a pointer
+--- @param pointer Pointer The pointer.
+--- @param value integer The value to assign at the address.
+--- @param offset integer The offset added to the pointer's address.
 local function dereference_set(pointer, value, offset)
 	offset = offset or 0
 	poke_funcs[pointer[2]](pointer[1] + offset, value)
 end
 
-local function make_pointer_metatable(layout)
+--- Creates a metatable with __index assigned to itself
+--- @return table
+local function new_lookup_meta()
 	local meta = {}
 	meta.__index = meta
-	
+	return meta
+end
+
+--- Inserts accessors to the pointers specified at `layout` into `tab`.
+--- @param tab {addr: integer, [any]: any} The table to add accessors to.
+--- @param layout table<string, Pointer> A layout definition containing pointers with offsets relative to `table.addr`.
+--- @return {addr: integer, [any]: any}
+local function expose_pointers(tab, layout)
 	for k,v in pairs(layout) do
-		meta["get_"..k] = function(self)
+		tab["get_"..k] = function(self)
 			return dereference_get(v, self.addr)
 		end
 		
-		meta["set_"..k] = function(self, value)
+		tab["set_"..k] = function(self, value)
 			dereference_set(v, value, self.addr)
 		end
 	end
 	
-	return meta
+	return tab
 end
 
-local function make_array_of_accessors(layout, arr, count, address, size)
-	local meta = {}
-	meta.__index = meta
-	
-	for k,v in pairs(layout) do
-		meta["get_"..k] = function(self)
-			return dereference_get(v, address + self.item_offset)
-		end
-		
-		meta["set_"..k] = function(self, value)
-			dereference_set(v, value, address + self.item_offset)
-		end
-	end
-	
+--- Populates an array with tables that have addresses based on even spacing, and sets
+--- their metatable to the one provided.
+--- @param arr [{addr: integer, [any]: any}]
+--- @param meta table
+--- @param count integer
+--- @param address integer
+--- @param size integer
+--- @return table
+local function make_address_array(arr, meta, count, address, size)
 	for i = 0, count - 1 do
-		arr[i] = setmetatable({item_offset = i * size}, meta)
+		arr[i] = setmetatable({addr = address + i * size}, meta)
 	end
 	
-	return meta
+	return arr
 end
 
-local function inject_array_access(tab, func_name, address, type, stride, count)
+--- Creates accessors that take in an index in an array of the type. 
+--- @param tab table
+--- @param offset integer
+--- @param func_name string
+--- @param type PointerType
+--- @param stride integer
+--- @param count integer
+--- @return table
+local function inject_array_access(tab, offset, func_name, type, stride, count)
 	local peek_func, poke_func = peek_funcs[type], poke_funcs[type]
 	
 	tab["get_"..func_name] = function(self, index)
 		if index < 0 or index >= count then error(fmt("Index out of range: %i.", index)) end
-		return peek_func(address + index * stride + self.item_offset)
+		return peek_func(self.addr + offset + index * stride)
 	end
 	
 	tab["set_"..func_name] = function(self, index, value)
 		if index < 0 or index >= count then error(fmt("Index out of range: %i.", index)) end
-		return poke_func(address + index * stride + self.item_offset, value)
+		return poke_func(self.addr + offset + index * stride, value)
 	end
+	
+	return tab
 end
 
 --- Create an interface to the PFX6416 at the specified memory address
@@ -310,56 +288,90 @@ function new_sfx_interface(addr, instruments_offset, tracks_offset, patterns_off
 	patterns_offset = patterns_offset or 0x100
 	instruments_offset = instruments_offset or 0x10000
 	tracks_offset = tracks_offset or 0x20000
-
+	
+	local m_pattern = expose_pointers(new_lookup_meta(), pattern_layout)
+	local m_track = expose_pointers(new_lookup_meta(), track_layout)
+	local m_instrument = expose_pointers(new_lookup_meta(), instrument_layout)
+	
+	inject_array_access(m_track, 8,  "row_pitch",        TYPE_U8, 5, TRACK_ROWS)
+	inject_array_access(m_track, 9,  "row_instrument",   TYPE_U8, 5, TRACK_ROWS)
+	inject_array_access(m_track, 10, "row_volume",       TYPE_U8, 5, TRACK_ROWS)
+	inject_array_access(m_track, 11, "row_effect",       TYPE_U8, 5, TRACK_ROWS)
+	inject_array_access(m_track, 12, "row_effect_param", TYPE_U8, 5, TRACK_ROWS)
+	
 	--- @class SfxInterface
 	local sfx_interface = {
 		addr = addr,
-		patterns = {},
-		tracks = {},
-		instruments = {}
+		patterns = make_address_array(
+			{},
+			m_pattern,
+			PATTERN_COUNT,
+			addr + patterns_offset,
+			PATTERN_BYTES
+		),
+		tracks = make_address_array(
+			{},
+			m_track,
+			TRACK_COUNT,
+			addr + tracks_offset,
+			TRACK_BYTES
+		),
+		instruments = make_address_array(
+			{},
+			m_instrument,
+			INSTRUMENT_COUNT,
+			addr + instruments_offset,
+			INSTRUMENT_BYTES
+		),
 	}
 	
-	local m_index = make_pointer_metatable(index_layout)
+	local m_index = expose_pointers(new_lookup_meta(), index_layout)
 	setmetatable(sfx_interface, m_index)
 	
-	local m_pattern = make_array_of_accessors(
-		pattern_layout,
-		sfx_interface.patterns,
-		PATTERN_COUNT,
-		addr + patterns_offset,
-		PATTERN_BYTES
-	)
-	local m_track = make_array_of_accessors(
-		track_layout,
-		sfx_interface.tracks,
-		TRACK_COUNT,
-		addr + tracks_offset,
-		TRACK_BYTES
-	)
-	local m_instrument = make_array_of_accessors(
-		instrument_layout,
-		sfx_interface.instruments,
-		INSTRUMENT_COUNT,
-		addr + instruments_offset,
-		INSTRUMENT_BYTES
-	)
-	
-	inject_array_access(m_pattern, "channel", addr + patterns_offset + 4, TYPE_I16, 2, 8)
-	
-	local track_row_offset = addr + tracks_offset + 8
-	inject_array_access(m_track, "row_pitch", track_row_offset, TYPE_U8, 5, TRACK_ROWS)
-	inject_array_access(m_track, "row_instrument", track_row_offset + 1, TYPE_U8, 5, TRACK_ROWS)
-	inject_array_access(m_track, "row_volume", track_row_offset + 2, TYPE_U8, 5, TRACK_ROWS)
-	inject_array_access(m_track, "row_effect", track_row_offset + 3, TYPE_U8, 5, TRACK_ROWS)
-	inject_array_access(m_track, "row_effect_param", track_row_offset + 4, TYPE_U8, 5, TRACK_ROWS)
-	
-	local m_node = make_pointer_metatable(node_layout)
-	
-	for i = 0, #sfx_interface.instruments do
+	local m_node_parameter = expose_pointers(new_lookup_meta(), node_parameter_layout)
+	local m_node = expose_pointers(new_lookup_meta(), node_layout)
+	local m_envelope = expose_pointers(new_lookup_meta(), envelope_layout)
+	local m_wavetable = expose_pointers(new_lookup_meta(), wavetable_layout)
+	for i = 0, INSTRUMENT_COUNT - 1 do
 		local instrument = sfx_interface.instruments[i]
-		local item_addr = instrument.item_offset
 		
+		instrument.nodes = make_address_array(
+			{},
+			m_node,
+			NODE_COUNT,
+			instrument.addr,
+			NODE_BYTES
+		)
+		
+		for j = 0, NODE_COUNT - 1 do
+			local node = instrument.nodes[j]
+				node.parameters = make_address_array(
+				{},
+				m_node_parameter,
+				NODE_PARAMETER_COUNT,
+				node.addr + 4,
+				NODE_PARAMETER_BYTES
+			)
+		end
+		
+		instrument.envelopes = make_address_array(
+			{},
+			m_envelope,
+			ENVELOPE_COUNT,
+			instrument.addr + 256,
+			ENVELOPE_BYTES
+		)
+		
+		instrument.wavetables = make_address_array(
+			{},
+			m_wavetable,
+			WAVETABLE_COUNT,
+			instrument.addr + 480,
+			WAVETABLE_BYTES
+		)
 	end
+	
+	inject_array_access(m_pattern, 4, "channel", TYPE_I16, 2, CHANNEL_COUNT)
 
 	return sfx_interface
 end
