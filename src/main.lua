@@ -60,12 +60,21 @@ create_label(g, {
 })
 ]]
 
+local sounds_tab_bar = create_tab_container(g, {
+	x = 0,
+	y = 100,
+	width = 95,
+	height = 81+4,
+})
 
-local l1 = create_list(g, {
+local instruments_tab = sounds_tab_bar:create_tab("instruments", true)
+local samples_tab = sounds_tab_bar:create_tab("samples")
+
+local l1 = create_list(instruments_tab, {
 	x = 1,
-	y = 104,
+	y = 1,
 	width = 94,
-	height = 79,
+	height = 71,
 })
 
 sfx_grid = create_sfx_grid(g, {
