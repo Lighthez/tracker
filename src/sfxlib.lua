@@ -142,14 +142,19 @@ local function pokehalf(addr, value, high)
 end
 
 local function peek_instrument_name(addr)
-	return string.char(peek(addr, INSTRUMENT_NAME_BYTES))
+	local len = INSTRUMENT_NAME_BYTES
+	-- Searching for last null
+	for i=15,0,-1 do
+		if (peek(addr+i) == 0) then
+			len = i
+		end
+	end
+	return chr(peek(addr,len))
 end
 
 local function poke_instrument_name(addr, value)
-	for i = 0, INSTRUMENT_NAME_BYTES - 1 do
-		local byte = i < #value and string.byte(value, i + 1) or 0
-		poke(addr + i, byte)
-	end
+	memset(addr, 0, INSTRUMENT_NAME_BYTES)
+	poke(addr, ord(value,1,min(16,#value)))
 end
 
 --- Reads one or more signed bytes from the given memory address.
