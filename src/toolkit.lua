@@ -511,7 +511,7 @@ function create_sfx_grid(self, el)
 
 	el.cells_wide = 8
 	el.cells_tall = 9
-	el.cell_width = el.width \ (el.cells_wide+1) - 1
+	el.cell_width = el.width // (el.cells_wide+1) - 1
 	el.cell_height = 9
 	el.pattern_count = 128
 	el.highlighted_cell = -1
@@ -581,7 +581,7 @@ function create_sfx_grid(self, el)
 			if i >= 0 then
 				--local ri = i - 1
 				local x = i % self.cells_wide + 1
-				local y = (i \ self.cells_wide) - self.scroll + 1
+				local y = (i // self.cells_wide) - self.scroll + 1
 				self:draw_cell(x, y, theme.color.active)
 
 				local sfx_str = string.format("%02x",((y+self.scroll)-1)*self.cells_wide+x-1)
@@ -758,34 +758,41 @@ function create_tracker(self, el)
 	el = self:attach(el)
 
 	el = default(el, {
-		track_rows = 16,
-		track_extra_padding = 2
+		track_rows = 48,
+		track_extra_padding = 2,
+		track_start_y = 38
 	})
 
+	el.player_position = 0
+	el.selection = vec(0,0,0,0) -- ORIGIN X, ORIGIN Y, WIDTH, HEIGHT
+	
+
 	function el:draw()
-		--rectfill(0,0,self.width,self.height,3)
+		rectfill(0,1,self.width,self.height-1,0)
+		rectfill(0, self.track_start_y, self.width, self.track_start_y, theme.color.border)
 		for x = 0, 7 do
-			self:draw_track(x * 46 + 6,43)
+			self:draw_track(x * 47 + 2, 44, x)
 		end
 	end
 
-	function el:draw_track(x,width)
-		rectfill(x, theme.metrics.padding + self.track_extra_padding, x + width, self.height - theme.metrics.padding - self.track_extra_padding, 0)
+	function el:draw_track(x, width, num)
+		--rectfill(x, theme.metrics.padding + self.track_extra_padding, x + width, self.height - theme.metrics.padding - self.track_extra_padding, 0)
+		print(num, x, 2, theme.color.text)
+		rectfill(x - 2, 1, x - 2, self.height, theme.color.border)
 
 		for y = 0, self.track_rows-1 do
-			local xx = print("xxx", x+1, y * theme.metrics.font_height + theme.metrics.padding + self.track_extra_padding + 1, theme.color.text)
-			xx = print("xx", xx+1, y * theme.metrics.font_height + theme.metrics.padding + self.track_extra_padding + 1, theme.color.text)
-			xx = print("xx", xx+1, y * theme.metrics.font_height + theme.metrics.padding + self.track_extra_padding + 1, theme.color.text)
-			--xx = print("x", xx+1, y * theme.metrics.font_height + theme.metrics.padding + 1, theme.color.text)
-			print("xxx", xx+1, y * theme.metrics.font_height + theme.metrics.padding + self.track_extra_padding + 1, theme.color.text)
+			local xx = print("xxx", x+1, y * theme.metrics.font_height + self.track_extra_padding + self.track_start_y + 1, theme.color.text)
+			xx = print("xx", xx+1, y * theme.metrics.font_height + self.track_extra_padding + self.track_start_y + 1, theme.color.text)
+			xx = print("xx", xx+1, y * theme.metrics.font_height + self.track_extra_padding + self.track_start_y + 1, theme.color.text)
+			print("xxx", xx+1, y * theme.metrics.font_height + self.track_extra_padding + self.track_start_y + 1, theme.color.text)
 		end
 	end
 
 	el.scrollbar = create_slider(el, {
 		axis = SLIDER_VERTICAL,
-		x = el.width - theme.metrics.scrollbar_width,
+		x = el.width - theme.metrics.scrollbar_width - 1,
 		y = 0,
-		width = theme.metrics.scrollbar_width,
+		width = theme.metrics.scrollbar_width + 1,
 		height = el.height + 1,
 		--steps = el.pattern_count - el.cells_tall + 1,
 		callback = function(index)
