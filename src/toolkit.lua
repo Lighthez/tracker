@@ -188,7 +188,8 @@ end
 
 function create_tab_container(self, el)
 	el = default(el, {
-		tab_height = 12
+		tab_height = 12,
+		draw_wide_tab = false
 	})
 
 	--[[
@@ -219,7 +220,7 @@ function create_tab_container(self, el)
 	function tab_bar_container:update_tab_positions()
 		for i = 1, #self.child do
 			self.child[i].x = flr((i-1) * (self.width / #self.child))
-			self.child[i].width = flr(self.width / #self.child)
+			self.child[i].width = flr(self.width / #self.child) + (el.draw_wide_tab and 1 or 0)
 		end
 	end
 
@@ -239,7 +240,7 @@ function create_tab_container(self, el)
 			self.color = (not self.container.hidden) and theme.color.active or self.color
 
 			rectfill(0, 0, self.width, self.height, self.color)
-			rect(0, 0, self.width, self.height-1, theme.color.border)
+			rect(0, 0, self.width + 8, self.height-1, theme.color.border)
 			print(self.label, 2, el.tab_height-7, theme.color.text)
 			self.color = theme.color.primary
 		end

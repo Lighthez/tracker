@@ -62,13 +62,15 @@ create_label(g, {
 
 local sounds_tab_bar = create_tab_container(g, {
 	x = 0,
-	y = 100,
+	y = 104,
 	width = 95,
 	height = 81+4,
+	tab_height = 9,
+	draw_wide_tab = true
 })
 
-local instruments_tab = sounds_tab_bar:create_tab("instruments", true)
-local samples_tab = sounds_tab_bar:create_tab("samples")
+local instruments_tab = sounds_tab_bar:create_tab("inst", true)
+local samples_tab = sounds_tab_bar:create_tab("sample")
 
 local l1 = create_list(instruments_tab, {
 	x = 1,
@@ -77,12 +79,25 @@ local l1 = create_list(instruments_tab, {
 	height = 71,
 })
 
-sfx_grid = create_sfx_grid(g, {
-	x = 1,
-	y = 183,
-	width = 94,
+local patterns_tab_bar = create_tab_container(g, {
+	x = 0,
+	y = 184,
+	width = 95,
 	height = 86,
-	cells_tall = 8
+	tab_height = 9,
+	draw_wide_tab = true
+})
+
+local matrix_tab = patterns_tab_bar:create_tab("mat", true)
+local pattern_tab = patterns_tab_bar:create_tab("pat")
+local sfx_tab = patterns_tab_bar:create_tab("sfx")
+
+sfx_grid = create_sfx_grid(matrix_tab, {
+	x = 1,
+	y = 0,--183,
+	width = 94,
+	height = 77,
+	cells_tall = 6 -- not working?
 })
 
 l1:new_item("this is sixteen ch", function() end)
@@ -191,8 +206,8 @@ function draw_background_layer()
 	draw_panel(0, 0, 95, 12)
 	print("tracker", 2, 5, theme.color.text)
 
-	draw_panel(0,11, 96, 93)
-	draw_panel(0,103, 96, 80)
+	draw_panel(0,11, 96, 94)
+	draw_panel(0,104, 96, 81)
 	draw_panel(0,183, 96, 270-183)
 	draw_panel(95, 11, 480-96, 270-11)
 end
