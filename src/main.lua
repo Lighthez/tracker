@@ -97,7 +97,7 @@ sfx_grid = create_sfx_grid(matrix_tab, {
 	y = 0,--183,
 	width = 94,
 	height = 77,
-	cells_tall = 6 -- not working?
+	cells_tall = 8
 })
 
 l1:new_item("this is sixteen ch", function() end)
