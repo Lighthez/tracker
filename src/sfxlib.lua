@@ -1,3 +1,64 @@
+--- @class Pattern
+--- @field pattern_length integer
+--- @field flow integer
+--- @field track_mask integer
+--- @field pattern_indices integer[]
+--- @field addr integer
+
+--- @class Track
+--- @field length integer
+--- @field tick_rate integer
+--- @field loop0 integer
+--- @field loop1 integer
+--- @field delay integer
+--- @field flags integer
+--- @field track_data TrackData
+--- @field addr integer
+
+--- @class TrackData
+--- @field pitches integer[]
+--- @field instruments integer[]
+--- @field volumes integer[]
+--- @field effects integer[]
+--- @field effect_params integer[]
+
+--- @class Instrument
+--- @field nodes Node[]
+--- @field envelopes Envelope[]
+--- @field wavetables Wavetable[]
+--- @field addr integer
+
+--- @class Node
+--- @field parent integer
+--- @field operator integer
+--- @field kind integer
+--- @field kind_p integer
+--- @field flags integer
+--- @field parameter_values [NodeParam]
+--- @field addr integer
+
+--- @class NodeParam
+--- @field flags integer
+--- @field val0 integer
+--- @field val1 integer
+--- @field envelope_index integer
+--- @field scale integer
+
+--- @alias EnvelopeType 0 | 1 | 2
+
+--- @class Envelope
+--- @field kind EnvelopeType
+--- @field flags integer
+--- @field tick_rate integer
+--- @field loop0 integer
+--- @field loop1 integer
+--- @field start integer
+
+--- @class Wavetable
+--- @field address integer
+--- @field width_bits integer
+--- @field height integer
+
 local PATTERN_COUNT <const> = 128
 local TRACK_ROWS <const> = 64
 local TRACK_COUNT <const> = 384
@@ -226,22 +287,36 @@ local function new_lookup_meta()
 	return meta
 end
 
---- Inserts accessors to the pointers specified at `layout` into `tab`.
---- @param tab {addr: integer, [any]: any} The table to add accessors to.
+--- Inserts __index and __newindex metamethods into `meta` that allow reading/writing to the pointers specified at `layout`.
+--- @param meta {addr: integer, [any]: any} The metatable to add accessors to.
 --- @param layout table<string, Pointer> A layout definition containing pointers with offsets relative to `table.addr`.
 --- @return {addr: integer, [any]: any}
-local function expose_pointers(tab, layout)
-	for k,v in pairs(layout) do
-		tab["get_"..k] = function(self)
-			return dereference_get(v, self.addr)
+local function expose_pointers(meta, layout)
+	local inner_index = meta.__index
+	meta.__index = function(self, k)
+		local v
+		if type(inner_index) == "function" then
+			v = inner_index(self, k)
+		elseif type(inner_index) == "table" then
+			v = inner_index[k]
 		end
-		
-		tab["set_"..k] = function(self, value)
-			dereference_set(v, value, self.addr)
+		if v then return v end
+		if not layout[k] then return end
+		return dereference_get(layout[k], self.addr)
+	end
+	local inner_newindex = meta.__newindex
+	meta.__newindex = function(self, k, v)
+		if not layout[k] then
+			if type(inner_newindex) == "function" then
+				inner_newindex(self, k, v)
+			elseif type(inner_index) == "table" then
+				inner_newindex[k] = v
+			end
 		end
+		return dereference_set(layout[k], v, self.addr)
 	end
 	
-	return tab
+	return meta
 end
 
 --- Populates an array with tables that have addresses based on even spacing, and sets
@@ -251,7 +326,7 @@ end
 --- @param count integer
 --- @param address integer
 --- @param size integer
---- @return table
+--- @return [{addr: integer}]
 local function make_address_array(arr, meta, count, address, size)
 	for i = 0, count - 1 do
 		arr[i] = setmetatable({addr = address + i * size}, meta)
@@ -298,13 +373,35 @@ function new_sfx_interface(addr, instruments_offset, tracks_offset, patterns_off
 	local m_track = expose_pointers(new_lookup_meta(), track_layout)
 	local m_instrument = expose_pointers(new_lookup_meta(), instrument_layout)
 	
-	inject_array_access(m_track, 8,  "row_pitch",        TYPE_U8, 5, TRACK_ROWS)
-	inject_array_access(m_track, 9,  "row_instrument",   TYPE_U8, 5, TRACK_ROWS)
-	inject_array_access(m_track, 10, "row_volume",       TYPE_U8, 5, TRACK_ROWS)
-	inject_array_access(m_track, 11, "row_effect",       TYPE_U8, 5, TRACK_ROWS)
-	inject_array_access(m_track, 12, "row_effect_param", TYPE_U8, 5, TRACK_ROWS)
+	inject_array_access(m_track, 8 + TRACK_ROWS * 0, "row_pitch",        TYPE_U8, 1, TRACK_ROWS)
+	inject_array_access(m_track, 8 + TRACK_ROWS * 1, "row_instrument",   TYPE_U8, 1, TRACK_ROWS)
+	inject_array_access(m_track, 8 + TRACK_ROWS * 2, "row_volume",       TYPE_U8, 1, TRACK_ROWS)
+	inject_array_access(m_track, 8 + TRACK_ROWS * 3, "row_effect",       TYPE_U8, 1, TRACK_ROWS)
+	inject_array_access(m_track, 8 + TRACK_ROWS * 4, "row_effect_param", TYPE_U8, 1, TRACK_ROWS)
+	
+	
+	local tracks = make_address_array(
+		{},
+		m_track,
+		TRACK_COUNT,
+		addr + tracks_offset,
+		TRACK_BYTES
+	)
 	
 	--- @class SfxInterface
+	--- @field patterns [Pattern]
+	--- @field tracks [Track]
+	--- @field instruments [Instrument]
+	--- @field num_instruments integer
+	--- @field num_tracks integer
+	--- @field num_patterns integer
+	--- @field flags integer
+	--- @field instruments_address integer
+	--- @field tracks_address integer
+	--- @field patterns_address integer
+	--- @field tick_length integer
+	--- @field default_track_length integer
+	--- @field default_track_speed integer
 	local sfx_interface = {
 		addr = addr,
 		patterns = make_address_array(
@@ -314,13 +411,7 @@ function new_sfx_interface(addr, instruments_offset, tracks_offset, patterns_off
 			addr + patterns_offset,
 			PATTERN_BYTES
 		),
-		tracks = make_address_array(
-			{},
-			m_track,
-			TRACK_COUNT,
-			addr + tracks_offset,
-			TRACK_BYTES
-		),
+		tracks = tracks,
 		instruments = make_address_array(
 			{},
 			m_instrument,
@@ -340,40 +431,41 @@ function new_sfx_interface(addr, instruments_offset, tracks_offset, patterns_off
 	for i = 0, INSTRUMENT_COUNT - 1 do
 		local instrument = sfx_interface.instruments[i]
 		
-		instrument.nodes = make_address_array(
+		rawset(instrument, "nodes", make_address_array(
 			{},
 			m_node,
 			NODE_COUNT,
 			instrument.addr,
 			NODE_BYTES
-		)
+		))
 		
 		for j = 0, NODE_COUNT - 1 do
 			local node = instrument.nodes[j]
-				node.parameters = make_address_array(
+			
+			rawset(node, "parameters", make_address_array(
 				{},
 				m_node_parameter,
 				NODE_PARAMETER_COUNT,
 				node.addr + 4,
 				NODE_PARAMETER_BYTES
-			)
+			))
 		end
 		
-		instrument.envelopes = make_address_array(
+		rawset(instrument, "envelopes", make_address_array(
 			{},
 			m_envelope,
 			ENVELOPE_COUNT,
 			instrument.addr + 256,
 			ENVELOPE_BYTES
-		)
+		))
 		
-		instrument.wavetables = make_address_array(
+		rawset(instrument, "wavetables", make_address_array(
 			{},
 			m_wavetable,
 			WAVETABLE_COUNT,
 			instrument.addr + 480,
 			WAVETABLE_BYTES
-		)
+		))
 	end
 	
 	inject_array_access(m_pattern, 4, "channel", TYPE_I16, 2, CHANNEL_COUNT)
