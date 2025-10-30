@@ -45,7 +45,33 @@ function round(num)
 	return num >= 0 and floor(num + 0.5) or ceil(num - 0.5)
 end
 
+local pitch_to_note_lookup = {
+	[0] = "c-",
+	[1] = "c#",
+	[2] = "d-",
+	[3] = "d#",
+	[4] = "e-",
+	[5] = "f-",
+	[6] = "f#",
+	[7] = "g-",
+	[8] = "g#",
+	[9] = "a-",
+	[10] = "a#",
+	[11] = "b-",
+}
+
+local function pitch_to_note(pitch)
+	if pitch == 255 then return "..." end
+	return fmt("%s%1i", pitch_to_note_lookup[pitch % 12], pitch // 12)
+end
+
+local function fallback_ff(value, fallback)
+	return value == 0xFF and fallback or fmt("%02x", value)
+end
+
 return {
 	default = default,
 	copy = copy,
+	pitch_to_note = pitch_to_note,
+	fallback_ff = fallback_ff,
 }

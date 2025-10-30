@@ -1,4 +1,5 @@
-local default = require"src/util".default
+local util = require("src/util")
+local default, pitch_to_note, fallback_ff = util.default, util.pitch_to_note, util.fallback_ff
 
 -- lib stuff goes here
 DIVIDER_HORIZONTAL = 0
@@ -421,23 +422,24 @@ function create_list(self, el)
 
 	el = self:attach(el)
 
-	--TODO: margin code
 	function el:draw()
 		for i = 1, flr(self.height / self.item_height) - 1 do
-			local real_idx = i + self.scroll
-			local v = self.items[real_idx]
+			local row_idx = i + self.scroll - 1
+			local v = self.items[i + self.scroll]
+
+			assert(v)
 
 			if not v then break end
 
-			local color = (real_idx == self.selected_item and theme.color.active) or (real_idx == self.hover_item and theme.color.highlight) or theme.color.primary
+			local color = (row_idx == (self.selected_item - 1) and theme.color.active) or (row_idx == (self.hover_item - 1) and theme.color.highlight) or theme.color.primary
 			rectfill(0, (i-1)*(self.item_height+1), self.width-1, i*(self.item_height+1)-2, color)
 			rectfill(0, i*(self.item_height+1)-1, self.width-1, i*(self.item_height+1)-1, theme.color.border)
 
 			if self.index_padding > 0 then
-				local prefix = string.format("%0"..self.index_padding.."x %s", real_idx, v.label)
+				local prefix = string.format("%0"..self.index_padding.."x %s", row_idx, v.label)
 				print(prefix, 1, (i-1)*(self.item_height+1)+1, theme.color.text)
 			else
-				print(self.show_indicies and (real_idx.." "..v.label) or v.label, 1, (i-1)*(self.item_height+1)+2, theme.color.text)
+				print(self.show_indicies and (row_idx.." "..v.label) or v.label, 1, (i-1)*(self.item_height+1)+2, theme.color.text)
 			end
 		end
 
@@ -464,7 +466,7 @@ function create_list(self, el)
 		if msg.mx > (self.width - theme.metrics.scrollbar_width) then return end
 
 		if wy != 0 then
-			self.scrollbar:scroll_to_abs(mid(0, self.scroll - wy, self.scroll_limit))
+			self.scrollbar:scroll_to_abs(mid(0, self.scroll - wy, self.scrollbar.steps))
 		end
 
 		local idx = self:get_item_idx(msg.my)
@@ -487,7 +489,7 @@ function create_list(self, el)
 			self.scrollbar.disabled = true
 		else
 			self.scrollbar.disabled = false
-			self.scroll_limit = flr(self.height / self.item_height) + 1
+			self.scroll_limit = self.height // self.item_height - 1
 			self.scrollbar.steps = (#self.items - self.scroll_limit)
 		end
 	end
@@ -510,11 +512,16 @@ end
 function create_sfx_grid(self, el)
 	el = self:attach(el)
 
+	el = default(el, {
+		pattern_count = 128,
+		cells_tall = 9
+	})
+
 	el.cells_wide = 8
 	--el.cells_tall = 9
 	el.cell_width = el.width // (el.cells_wide+1) - 1
 	el.cell_height = 9
-	el.pattern_count = 128
+	--el.pattern_count = 128
 	el.highlighted_cell = -1
 	el.hovered_cell = -1
 	el.hovered_row = -1
@@ -527,8 +534,6 @@ function create_sfx_grid(self, el)
 	el.offset_x = 5
 	el.offset_y = 2
 	el.scroll = 0
-
-	--el.height = el.cells_tall * el.cell_height + 1
 
 	function el:draw(msg)
 		camera(-self.sx-self.offset_x, -self.sy-self.offset_y)
@@ -570,7 +575,7 @@ function create_sfx_grid(self, el)
 				sfx_str = string.sub(sfx_str, 0, 2)
 				--if #sfx_str < 2 then sfx_str = "0"..sfx_str end
 				--print(sfx_str, self.cell_width*x+1, self.cell_height*y+3, theme.color.text)
-				local v_even = y % 2 == 0
+				local v_even = (y - self.scroll) % 2 == 0
 				local h_even = x % 2 == 0
 				--TODO: Use theme colors for this.
 				print(sfx_str, self.cell_width*x+1, self.cell_height*y+3, v_even and (h_even and 11 or 26) or (h_even and 6 or 7))
@@ -772,7 +777,8 @@ function create_tracker(self, el)
 	el = default(el, {
 		track_rows = 48,
 		track_extra_padding = 2,
-		track_start_y = 38
+		track_start_y = 38,
+		--track_callback = function() end
 	})
 
 	el.player_position = 0
@@ -792,10 +798,19 @@ function create_tracker(self, el)
 		rectfill(x - 2, 1, x - 2, self.height, theme.color.border)
 
 		for y = 0, self.track_rows-1 do
-			local xx = print("xxx", x+1, y * theme.metrics.font_height + self.track_extra_padding + self.track_start_y + 1, theme.color.text)
-			xx = print("xx", xx+1, y * theme.metrics.font_height + self.track_extra_padding + self.track_start_y + 1, theme.color.text)
-			xx = print("xx", xx+1, y * theme.metrics.font_height + self.track_extra_padding + self.track_start_y + 1, theme.color.text)
-			print("xxx", xx+1, y * theme.metrics.font_height + self.track_extra_padding + self.track_start_y + 1, theme.color.text)
+			local pitch, inst, vol, effect_kind, effect_value = self.track_callback(num, y)
+			
+			local pitch_fmt = pitch_to_note(pitch)
+			local inst_fmt = inst == 0xFF and ".." or fmt("%02x", inst)
+			local vol_fmt = vol == 0xFF and ".." or fmt("%02x", vol)
+			local effect_kind_fmt = effect_kind == 0 and "." or string.char(effect_kind)
+			local effect_value_fmt = effect_kind == 0 and ".." or fmt("%02x", effect_value)
+
+			local xx = print(pitch_fmt, x+1, y * theme.metrics.font_height + self.track_extra_padding + self.track_start_y + 1, theme.color.text)
+			xx = print(inst_fmt, xx+1, y * theme.metrics.font_height + self.track_extra_padding + self.track_start_y + 1, theme.color.text)
+			xx = print(vol_fmt, xx+1, y * theme.metrics.font_height + self.track_extra_padding + self.track_start_y + 1, theme.color.text)
+			print(effect_kind_fmt..effect_value_fmt, xx+1, y * theme.metrics.font_height + self.track_extra_padding + self.track_start_y + 1, theme.color.text)
+			--print(effect_kind_fmt, xx+1, y * theme.metrics.font_height + self.track_extra_padding + self.track_start_y + 1, theme.color.text)
 		end
 	end
 
