@@ -556,6 +556,8 @@ function create_sfx_grid(self, el)
 		if self.selection_kind == SELECTION_TRACK then
 			self:draw_cell(self.selected_item, 0, theme.color.active)
 		end
+		
+		local grid_cols = theme.color.sfx_grid
 
 		for y = 1, self.cells_tall-1 do
 			for x = 1, self.cells_wide do
@@ -577,8 +579,19 @@ function create_sfx_grid(self, el)
 				--print(sfx_str, self.cell_width*x+1, self.cell_height*y+3, theme.color.text)
 				local v_even = (y - self.scroll) % 2 == 0
 				local h_even = x % 2 == 0
-				--TODO: Use theme colors for this.
-				print(sfx_str, self.cell_width*x+1, self.cell_height*y+3, v_even and (h_even and 11 or 26) or (h_even and 6 or 7))
+				
+				local text_col
+				if v_even then
+					text_col = h_even
+						and grid_cols.highlight_text_odd
+						or grid_cols.highlight_text_even
+				else
+					text_col = h_even
+						and grid_cols.text_odd
+						or grid_cols.text_even
+				end
+				
+				print(sfx_str, self.cell_width*x+1, self.cell_height*y+3, text_col)
 				--rectfill(self.cell_width*x+2, self.cell_height*y+9, self.cell_width*x+6, self.cell_height*y+9, 7)
 			end
 		end
@@ -598,7 +611,7 @@ function create_sfx_grid(self, el)
 
 				local sfx_str = string.format("%02x",((y+self.scroll)-1)*self.cells_wide+x-1)
 				sfx_str = string.sub(sfx_str, 0, 2)
-				print(sfx_str, self.cell_width*x+1, self.cell_height*y+3, 12)
+				print(sfx_str, self.cell_width*x+1, self.cell_height*y+3, theme.color.sfx_grid.text_active)
 			end
 			::continue::
 		end
@@ -613,7 +626,7 @@ function create_sfx_grid(self, el)
 			--rectfill(0, self.cell_height*y, self.width, self.cell_height*y, theme.color.secondary)	
 			--if y == self.cells_tall+1 then break end
 			local pattern_str = string.format("%02x",ry-1)
-			print("p"..pattern_str, -3, self.cell_height*y+3, 28)
+			print("p"..pattern_str, -3, self.cell_height*y+3, grid_cols.selector_color)
 		end
 		
 		-- Column lines
@@ -625,7 +638,7 @@ function create_sfx_grid(self, el)
 			]]
 			--rectfill(self.cell_width*x-1, 0, self.cell_width*x-1, self.cell_height * (self.cells_tall+1), theme.color.secondary)
 			if x == self.cells_wide+1 then break end
-			print("t"..x, self.cell_width*x+1, 3, 28)
+			print("t"..x, self.cell_width*x+1, 3, grid_cols.selector_color)
 		end
 
 		--rect(0,0,self.width-1,self.height-1,theme.color.border)
