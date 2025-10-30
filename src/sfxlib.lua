@@ -293,27 +293,43 @@ end
 --- @return {addr: integer, [any]: any}
 local function expose_pointers(meta, layout)
 	local inner_index = meta.__index
-	meta.__index = function(self, k)
-		local v
-		if type(inner_index) == "function" then
-			v = inner_index(self, k)
-		elseif type(inner_index) == "table" then
-			v = inner_index[k]
+	if type(inner_index) == "function" then
+		meta.__index = function(self, k)
+			local v = inner_index(self, k)
+			if v then return v end
+			if not layout[k] then return end
+			return dereference_get(layout[k], self.addr)
 		end
-		if v then return v end
-		if not layout[k] then return end
-		return dereference_get(layout[k], self.addr)
+	elseif type(inner_index) == "table" then
+		meta.__index = function(self, k)
+			local v = inner_index[k]
+			if v then return v end
+			if not layout[k] then return end
+			return dereference_get(layout[k], self.addr)
+		end
+	else
+		meta.__index = function(self, k)
+			if not layout[k] then return end
+			return dereference_get(layout[k], self.addr)
+		end
 	end
+	
 	local inner_newindex = meta.__newindex
-	meta.__newindex = function(self, k, v)
-		if not layout[k] then
-			if type(inner_newindex) == "function" then
-				inner_newindex(self, k, v)
-			elseif type(inner_index) == "table" then
-				inner_newindex[k] = v
-			end
+	if type(inner_newindex) == "function" then
+		meta.__newindex = function(self, k, v)
+			if not layout[k] then inner_newindex(self, k, v) end
+			return dereference_set(layout[k], v, self.addr)
 		end
-		return dereference_set(layout[k], v, self.addr)
+	elseif type(inner_index) == "table" then
+		meta.__newindex = function(self, k, v)
+			if not layout[k] then inner_newindex[k] = v end
+			return dereference_set(layout[k], v, self.addr)
+		end
+	else
+		meta.__newindex = function(self, k, v)
+			if not layout[k] then return end
+			return dereference_set(layout[k], v, self.addr)
+		end
 	end
 	
 	return meta
