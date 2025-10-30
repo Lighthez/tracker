@@ -133,7 +133,9 @@ function _init()
 
 	tracker = create_tracker(t1, {
 		width_rel = 1.0,
-		height_rel = 1.0
+		height_rel = 1.0,
+		sfx_interface = sfx_interface,
+		selected_pattern = 0
 	})
 
 	tracker.track_callback = function (track, row)

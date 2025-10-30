@@ -788,21 +788,35 @@ function create_tracker(self, el)
 	el = self:attach(el)
 
 	el = default(el, {
-		track_rows = 48,
+		track_rows = 31,
 		track_extra_padding = 2,
 		track_start_y = 38,
 		--track_callback = function() end
 	})
 
+	el.surface = userdata("u8", el.width, el.height)
+	el.needs_update = true
 	el.player_position = 0
 	el.selection = vec(0,0,0,0) -- ORIGIN X, ORIGIN Y, WIDTH, HEIGHT
 
 	function el:draw()
-		rectfill(0,1,self.width,self.height-1,0)
-		rectfill(0, self.track_start_y, self.width, self.track_start_y, theme.color.border)
-		for x = 0, 7 do
-			self:draw_track(x * 47 + 2, 44, x)
+		if self.needs_update then
+			local draw_target = set_draw_target(self.surface)
+			local old_clip = {clip()}
+			local old_cam = {camera()}
+			rectfill(0,1,self.width,self.height-1,0)
+			rectfill(0, self.track_start_y, self.width, self.track_start_y, theme.color.border)
+			for x = 0, 7 do
+				self:draw_track(x * 47 + 2, 44, x)
+			end
+			camera(unpack(old_cam))
+			clip(unpack(old_clip))
+			set_draw_target(draw_target)
+
+			self.needs_update = false
 		end
+		
+		blit(self.surface, nil, nil, nil, self.sx, self.sy)
 	end
 
 	function el:draw_track(x, width, num)
@@ -818,14 +832,16 @@ function create_tracker(self, el)
 			local vol_fmt = vol == 0xFF and ".." or fmt("%02x", vol)
 			local effect_kind_fmt = effect_kind == 0 and "." or string.char(effect_kind)
 			local effect_value_fmt = effect_kind == 0 and ".." or fmt("%02x", effect_value)
-
-			local xx = print(pitch_fmt, x+1, y * theme.metrics.font_height + self.track_extra_padding + self.track_start_y + 1, theme.color.text)
-			xx = print(inst_fmt, xx+1, y * theme.metrics.font_height + self.track_extra_padding + self.track_start_y + 1, theme.color.text)
-			xx = print(vol_fmt, xx+1, y * theme.metrics.font_height + self.track_extra_padding + self.track_start_y + 1, theme.color.text)
-			print(effect_kind_fmt..effect_value_fmt, xx+1, y * theme.metrics.font_height + self.track_extra_padding + self.track_start_y + 1, theme.color.text)
-			--print(effect_kind_fmt, xx+1, y * theme.metrics.font_height + self.track_extra_padding + self.track_start_y + 1, theme.color.text)
+			
+			local full = fmt("%s\-h%s\-h%s\-h%s%s", pitch_fmt, inst_fmt, vol_fmt, effect_kind_fmt, effect_value_fmt)
+			print(full, x+1, y * theme.metrics.font_height + self.track_extra_padding + self.track_start_y + 1, theme.color.text)
+			-- local xx = print(pitch_fmt, x+1, y * theme.metrics.font_height + self.track_extra_padding + self.track_start_y + 1, theme.color.text)
+			-- xx = print(inst_fmt, xx+1, y * theme.metrics.font_height + self.track_extra_padding + self.track_start_y + 1, theme.color.text)
+			-- xx = print(vol_fmt, xx+1, y * theme.metrics.font_height + self.track_extra_padding + self.track_start_y + 1, theme.color.text)
+			-- print(effect_kind_fmt..effect_value_fmt, xx+1, y * theme.metrics.font_height + self.track_extra_padding + self.track_start_y + 1, theme.color.text)
 		end
 	end
+
 
 	el.scrollbar = create_slider(el, {
 		axis = SLIDER_VERTICAL,
