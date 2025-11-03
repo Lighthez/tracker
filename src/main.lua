@@ -59,10 +59,10 @@ function _init()
 
 	local sounds_tab_bar = create_tab_container(g, {
 		x = 0,
-		y = 104,
+		y = 115,
 		width = 95,
-		height = 81+4,
-		tab_height = 9,
+		height = 77,
+		tab_height = 12,
 		draw_wide_tab = true
 	})
 
@@ -73,15 +73,15 @@ function _init()
 		x = 1,
 		y = 1,
 		width = 94,
-		height = 71,
+		height = 77-14,
 	})
 
 	local patterns_tab_bar = create_tab_container(g, {
 		x = 0,
-		y = 184,
+		y = 190,
 		width = 95,
-		height = 86,
-		tab_height = 9,
+		height = 68+12,
+		tab_height = 12,
 		draw_wide_tab = true
 	})
 
@@ -93,8 +93,8 @@ function _init()
 		x = 1,
 		y = 0,--183,
 		width = 94,
-		height = 77,
-		cells_tall = 8
+		height = 68,
+		cells_tall = 7
 	})
 
 	for i = 0, 63 do 
@@ -203,9 +203,9 @@ function draw_background_layer()
 	draw_panel(0, 0, 95, 12)
 	print("tracker", 2, 5, theme.color.text)
 
-	draw_panel(0,11, 96, 94)
-	draw_panel(0,104, 96, 81)
-	draw_panel(0,183, 96, 270-183)
+	draw_panel(0,11, 96, 105) -- main
+	draw_panel(0,125, 96, 77) -- insts
+	draw_panel(0,193, 96, 77) -- grid
 	draw_panel(95, 11, 480-96, 270-11)
 end
 

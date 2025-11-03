@@ -5,6 +5,7 @@ theme = {
 		highlight = 22,
 		primary = 5,
 		secondary = 9,
+		scroll_background = 5,
 		background = 21,
 		border = 21,
 		text = 7,

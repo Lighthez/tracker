@@ -310,11 +310,11 @@ function create_slider(self, el)
 
 	el.grabber_pos = 0
 	el.last_value = 0
-	el.color = theme.color.primary
+	el.color = theme.color.secondary
 	el.disabled = false
 
 	function el:draw()
-		rectfill(0, 0, self.width, self.height, theme.color.secondary)
+		rectfill(0, 0, self.width, self.height, theme.color.primary)
 		
 		if not self.disabled then
 			el:draw_nub()
@@ -323,7 +323,7 @@ function create_slider(self, el)
 		rect(0, 0, self.width-1, self.height-1, theme.color.border)
 		--print(self.value,0,0,7)
 
-		el.color = theme.color.primary
+		el.color = theme.color.secondary
 	end
 
 	function el:hover(msg)
@@ -804,7 +804,8 @@ function create_tracker(self, el)
 			local draw_target = set_draw_target(self.surface)
 			local old_clip = {clip()}
 			local old_cam = {camera()}
-			rectfill(0,1,self.width,self.height-1,0)
+			rectfill(0, 0, self.width, 0, theme.color.border)
+			--rectfill(0,2,self.width,self.height-1,0) ????
 			rectfill(0, self.track_start_y, self.width, self.track_start_y, theme.color.border)
 			for x = 0, 7 do
 				self:draw_track(x * 47 + 2, 44, x)
