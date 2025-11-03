@@ -1,0 +1,27 @@
+{
+	"editor.defaultFormatter": "sumneko.lua",
+	"Lua.workspace.library": [
+		"C:\\lualib\\picotron-definitions"
+	],
+	"Lua.runtime.nonstandardSymbol": [
+		"!=",
+		"+=",
+		"-=",
+		"*=",
+		"/=",
+		"%=",
+		"^=",
+		"|=",
+		"&=",
+		"<<=",
+		">>="
+	],
+	"Lua.diagnostics.disable": [
+		"deprecated",
+		"unsupport-symbol",
+		"err-esc",
+		"trailing-space"
+	],
+	"Lua.runtime.version": "Lua 5.4",
+	"editor.rulers": [87],
+}
