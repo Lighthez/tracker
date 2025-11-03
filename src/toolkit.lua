@@ -784,7 +784,12 @@ function create_sfx_grid(self, el)
 	return el
 end
 
-function create_tracker(self, el)
+---TBD
+---@param self gui
+---@param el gui
+---@param sfx_ref SfxInterface
+---@return table
+function create_tracker(self, el, sfx_ref)
 	el = self:attach(el)
 
 	el = default(el, {
@@ -794,21 +799,37 @@ function create_tracker(self, el)
 		--track_callback = function() end
 	})
 
+	--el.selected_pattern = 0
+	--el.pattern_data = {}
+	el.scroll = 0
 	el.surface = userdata("u8", el.width, el.height)
 	el.needs_update = true
 	el.player_position = 0
 	el.selection = vec(0,0,0,0) -- ORIGIN X, ORIGIN Y, WIDTH, HEIGHT
+	el.sfx_ref = sfx_ref
+
+	function el:hover(msg)
+		local _, _, _, _, wy = mouse()
+		if msg.mx > (self.width - theme.metrics.scrollbar_width) then return end
+
+		if wy != 0 then
+			self.scrollbar:scroll_to_abs(mid(0, self.scroll - wy, self.scrollbar.steps))
+		end
+	end
 
 	function el:draw()
+		if not self.pattern_data then return end
+
 		if self.needs_update then
 			local draw_target = set_draw_target(self.surface)
+			cls(0)
 			local old_clip = {clip()}
 			local old_cam = {camera()}
 			rectfill(0, 0, self.width, 0, theme.color.border)
 			--rectfill(0,2,self.width,self.height-1,0) ????
 			rectfill(0, self.track_start_y, self.width, self.track_start_y, theme.color.border)
 			for x = 0, 7 do
-				self:draw_track(x * 47 + 2, 44, x)
+				self:draw_track(x * 47 + 2, 44, self.pattern_data[x])
 			end
 			camera(unpack(old_cam))
 			clip(unpack(old_clip))
@@ -826,7 +847,7 @@ function create_tracker(self, el)
 		rectfill(x - 2, 1, x - 2, self.height, theme.color.border)
 
 		for y = 0, self.track_rows-1 do
-			local pitch, inst, vol, effect_kind, effect_value = self.track_callback(num, y)
+			local pitch, inst, vol, effect_kind, effect_value = self:get_track_row(num, y + el.scroll)
 			
 			local pitch_fmt = pitch_to_note(pitch)
 			local inst_fmt = inst == 0xFF and ".." or fmt("%02x", inst)
@@ -843,6 +864,26 @@ function create_tracker(self, el)
 		end
 	end
 
+	function el:select_pattern(num)
+		if self.sfx_ref.patterns[num] then
+			self.pattern_data = {}
+			for i = 0, 7 do
+				self.pattern_data[i] = self.sfx_ref.patterns[num]:get_pattern_indices(i)
+			end
+		else
+			self.pattern_data = nil
+		end
+	end
+
+	function el:get_track_row(track_idx, row)
+		local pitch = self.sfx_ref.tracks[track_idx]:get_row_pitch(row)
+		local inst = self.sfx_ref.tracks[track_idx]:get_row_instrument(row)
+		local vol = self.sfx_ref.tracks[track_idx]:get_row_volume(row)
+		local effect_kind = self.sfx_ref.tracks[track_idx]:get_row_effect(row)
+		local effect_value = self.sfx_ref.tracks[track_idx]:get_row_effect_param(row)
+		
+		return pitch, inst, vol, effect_kind, effect_value
+	end
 
 	el.scrollbar = create_slider(el, {
 		axis = SLIDER_VERTICAL,
@@ -853,8 +894,12 @@ function create_tracker(self, el)
 		--steps = el.pattern_count - el.cells_tall + 1,
 		callback = function(index)
 			el.scroll = index
+			el.needs_update = true
 		end
 	})
+
+	el.scroll_limit = el.height // theme.metrics.font_height - 1
+	el.scrollbar.steps = (64 - el.scroll_limit)
 
 	return el
 end

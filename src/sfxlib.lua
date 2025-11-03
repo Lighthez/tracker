@@ -117,10 +117,18 @@ local index_layout = {
 }
 
 local pattern_layout = {
-	pattern_length = { 0, TYPE_I16 },
-	flow = { 2, TYPE_U8 },
-	track_mask = { 3, TYPE_U8 },
+	--[[
+		pattern_length = { 0, TYPE_I16 },
+		flow = { 2, TYPE_U8 },
+		track_mask = { 3, TYPE_U8 },
+		-- Pattern indices, i16 * 8
+	]]
 	-- Pattern indices, i16 * 8
+	-- Actually u8 * 8 ????
+	flow = {8, TYPE_U8},
+	track_mask = {9, TYPE_U8},
+	pattern_length = {10, TYPE_I16} -- unconfirmed, no idea if this actually exists
+	-- 2 bytes unused?
 }
 
 local track_layout = {
@@ -201,7 +209,20 @@ local function pokehalf(addr, value, high)
 		or (peek(addr) & (~0xF) | value)
 	)
 end
+--[[
+local function peeki16(addr, count)
+	if not count or count <= 1 then
+		local val = peek(addr)
+		local val2 = peek(addr + 1)
+		sign = val & 0b10000000
+		val = (val & 0b01111111) << 8
 
+		return val + val2
+	end
+
+	assert(false, "unimpl")
+end
+]]
 local function peek_instrument_name(addr)
 	local len = INSTRUMENT_NAME_BYTES
 	-- Searching for last null
@@ -245,7 +266,7 @@ local peek_funcs = {
 	[TYPE_U8] = peek,
 	[TYPE_I8] = peeki8,
 	[TYPE_U16] = peek2,
-	[TYPE_I16] = peek2,
+	[TYPE_I16] = peek2,--peek2,--peeki16,
 	[TYPE_I32] = peek4,
 	[TYPE_INSTRUMENT_NAME] = peek_instrument_name
 }
@@ -381,7 +402,7 @@ end
 function new_sfx_interface(addr, instruments_offset, tracks_offset, patterns_offset)
 	addr = addr or 0x30000
 	
-	patterns_offset = patterns_offset or 0x100
+	patterns_offset = patterns_offset or 0xFC
 	instruments_offset = instruments_offset or 0x10000
 	tracks_offset = tracks_offset or 0x20000
 	
@@ -484,7 +505,7 @@ function new_sfx_interface(addr, instruments_offset, tracks_offset, patterns_off
 		))
 	end
 	
-	inject_array_access(m_pattern, 4, "channel", TYPE_I16, 2, CHANNEL_COUNT)
+	inject_array_access(m_pattern, 4, "pattern_indices", TYPE_U8, 1, CHANNEL_COUNT)
 
 	return sfx_interface
 end

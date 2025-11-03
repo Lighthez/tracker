@@ -136,17 +136,9 @@ function _init()
 		height_rel = 1.0,
 		sfx_interface = sfx_interface,
 		selected_pattern = 0
-	})
+	}, sfx_interface)
 
-	tracker.track_callback = function (track, row)
-		local pitch = sfx_interface.tracks[track]:get_row_pitch(row)
-		local inst = sfx_interface.tracks[track]:get_row_instrument(row)
-		local vol = sfx_interface.tracks[track]:get_row_volume(row)
-		local effect_kind = sfx_interface.tracks[track]:get_row_effect(row)
-		local effect_value = sfx_interface.tracks[track]:get_row_effect_param(row)
-		
-		return pitch, inst, vol, effect_kind, effect_value
-	end
+	tracker:select_pattern(0)
 
 	--[[
 	tc2:create_tab("nesting testing")
