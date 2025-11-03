@@ -138,6 +138,10 @@ function _init()
 		selected_pattern = 0
 	}, sfx_interface)
 
+	sfx_grid.switch_pattern_callback = function(num)
+		tracker:select_pattern(num)
+	end
+
 	tracker:select_pattern(0)
 
 	--[[

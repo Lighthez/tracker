@@ -728,6 +728,8 @@ function create_sfx_grid(self, el)
 			self.selected_row = self.hovered_row
 			self.selection_kind = SELECTION_PATTERN
 
+			self.switch_pattern_callback(self.hovered_row - 1)
+
 			if not key("shift") then 
 				self.selected_items = {}
 			end
@@ -867,6 +869,7 @@ function create_tracker(self, el, sfx_ref)
 	end
 
 	function el:select_pattern(num)
+		self.needs_update = true
 		if self.sfx_ref.patterns[num] then
 			self.pattern_data = {}
 			for i = 0, 7 do
