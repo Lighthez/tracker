@@ -1,5 +1,5 @@
 local util = require("src/util")
-local default, pitch_to_note, fallback_ff = util.default, util.pitch_to_note, util.fallback_ff
+local default, pitch_to_note = util.default, util.pitch_to_note
 
 -- lib stuff goes here
 DIVIDER_HORIZONTAL = 0
@@ -845,22 +845,24 @@ function create_tracker(self, el, sfx_ref)
 		--rectfill(x, theme.metrics.padding + self.track_extra_padding, x + width, self.height - theme.metrics.padding - self.track_extra_padding, 0)
 		print(num, x, 2, theme.color.text)
 		rectfill(x - 2, 1, x - 2, self.height, theme.color.border)
-
+		
+		local track = self.sfx_ref.tracks[num]
+		
 		for y = 0, self.track_rows-1 do
-			local pitch, inst, vol, effect_kind, effect_value = self:get_track_row(num, y + el.scroll)
+			local pitch, inst, vol, effect_kind, effect_value = self:get_track_row(track, y + self.scroll)
 			
-			local pitch_fmt = pitch_to_note(pitch)
-			local inst_fmt = inst == 0xFF and ".." or fmt("%02x", inst)
-			local vol_fmt = vol == 0xFF and ".." or fmt("%02x", vol)
-			local effect_kind_fmt = effect_kind == 0 and "." or string.char(effect_kind)
-			local effect_value_fmt = effect_kind == 0 and ".." or fmt("%02x", effect_value)
-			
-			local full = fmt("%s\-h%s\-h%s\-h%s%s", pitch_fmt, inst_fmt, vol_fmt, effect_kind_fmt, effect_value_fmt)
-			print(full, x+1, y * theme.metrics.font_height + self.track_extra_padding + self.track_start_y + 1, theme.color.text)
-			-- local xx = print(pitch_fmt, x+1, y * theme.metrics.font_height + self.track_extra_padding + self.track_start_y + 1, theme.color.text)
-			-- xx = print(inst_fmt, xx+1, y * theme.metrics.font_height + self.track_extra_padding + self.track_start_y + 1, theme.color.text)
-			-- xx = print(vol_fmt, xx+1, y * theme.metrics.font_height + self.track_extra_padding + self.track_start_y + 1, theme.color.text)
-			-- print(effect_kind_fmt..effect_value_fmt, xx+1, y * theme.metrics.font_height + self.track_extra_padding + self.track_start_y + 1, theme.color.text)
+			print(
+				fmt(theme.metrics.sfx_rows.formattable_row, 
+					pitch_to_note(pitch), 
+					inst == 0xFF and ".." or fmt("%02x", inst), 
+					vol == 0xFF and ".." or fmt("%02x", vol),
+					effect_kind == 0 and "." or string.char(effect_kind),
+					effect_kind == 0 and ".." or fmt("%02x", effect_value)
+				),
+				x+1,
+				y * theme.metrics.font_height + self.track_extra_padding + self.track_start_y + 1,
+				0
+			)
 		end
 	end
 
@@ -875,12 +877,12 @@ function create_tracker(self, el, sfx_ref)
 		end
 	end
 
-	function el:get_track_row(track_idx, row)
-		local pitch = self.sfx_ref.tracks[track_idx]:get_row_pitch(row)
-		local inst = self.sfx_ref.tracks[track_idx]:get_row_instrument(row)
-		local vol = self.sfx_ref.tracks[track_idx]:get_row_volume(row)
-		local effect_kind = self.sfx_ref.tracks[track_idx]:get_row_effect(row)
-		local effect_value = self.sfx_ref.tracks[track_idx]:get_row_effect_param(row)
+	function el:get_track_row(track, row)
+		local pitch = track:get_row_pitch(row)
+		local inst = track:get_row_instrument(row)
+		local vol = track:get_row_volume(row)
+		local effect_kind = track:get_row_effect(row)
+		local effect_value = track:get_row_effect_param(row)
 		
 		return pitch, inst, vol, effect_kind, effect_value
 	end

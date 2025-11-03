@@ -65,13 +65,13 @@ local function pitch_to_note(pitch)
 	return fmt("%s%1i", pitch_to_note_lookup[pitch % 12], pitch // 12)
 end
 
-local function fallback_ff(value, fallback)
-	return value == 0xFF and fallback or fmt("%02x", value)
+local function p8scii_col(col)
+	return col >= 10 and chr(87 + col) or chr(48 + col)
 end
 
 return {
 	default = default,
 	copy = copy,
 	pitch_to_note = pitch_to_note,
-	fallback_ff = fallback_ff,
+	p8scii_col = p8scii_col,
 }
