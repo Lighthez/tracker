@@ -809,6 +809,7 @@ function create_tracker(self, el, sfx_ref)
 	el.draw_again = true
 	el.player_position = 0
 	el.selection = {track_x = 0, col_x = 0, y = 0, track_x2 = 0, col_x2 = 0, y2 = 0}
+	el.active_selection = false
 	el.dragging = false
 	el.was_dragging = false
 	el.update_one_last_time = true
@@ -859,11 +860,16 @@ function create_tracker(self, el, sfx_ref)
 			msg.mx < 0 or 
 			msg.my > self.height or
 			msg.my < 0 then 
-				if self.update_one_last_time then
+				if dragging and self.update_one_last_time then
 					self.selection.track_x2 = self.hovered_track
 					self.selection.col_x2 = self.hovered_track_column
 					self.selection.y2 = self.hovered_row
 					self.draw_again = true
+					self.update_one_last_time = false
+					self.was_dragging = false
+					self.deselect_safety = true
+					return
+				elseif self.update_one_last_time then
 					self.update_one_last_time = false
 				end
 				
@@ -890,6 +896,7 @@ function create_tracker(self, el, sfx_ref)
 			self.selection.col_x2 = self.hovered_track_column
 			self.selection.y = self.hovered_row
 			self.selection.y2 = self.hovered_row
+			self.active_selection = true
 		end
 
 		self.was_dragging = dragging
@@ -939,23 +946,25 @@ function create_tracker(self, el, sfx_ref)
 			local cosmetic_offset_x2 = ((virtual_col_x2 - virtual_col_x) == 0 and selection.col_x == 1) and 1 or 0
 
 			--TODO: clip drawing to tracks only
-			rectfill(
-				selection.track_x * self.track_width + channel_columns[selection.col_x + dir_x1] - dir_x1,
-				(selection.y - self.scroll + dir_y1) * theme.metrics.font_height + self.track_start_y,
-				(selection.track_x2) * self.track_width + channel_columns[selection.col_x2 + dir_x2] - dir_x2 + cosmetic_offset_x2,
-				(selection.y2 - self.scroll + dir_y2) * theme.metrics.font_height + self.track_start_y,
-				18 --theme.color.active
-			)
-			
-			-- selection start debug printing
-			print(selection.col_x, selection.track_x * (self.track_width) + channel_columns[selection.col_x], (selection.y - self.scroll) * theme.metrics.font_height + self.track_start_y, 8)
-			print(selection.track_x)
-			print(selection.y)
+			if self.active_selection then
+				rectfill(
+					selection.track_x * self.track_width + channel_columns[selection.col_x + dir_x1] - dir_x1,
+					(selection.y - self.scroll + dir_y1) * theme.metrics.font_height + self.track_start_y,
+					(selection.track_x2) * self.track_width + channel_columns[selection.col_x2 + dir_x2] - dir_x2 + cosmetic_offset_x2,
+					(selection.y2 - self.scroll + dir_y2) * theme.metrics.font_height + self.track_start_y,
+					18 --theme.color.active
+				)
+				
+				-- selection start debug printing
+				print(selection.col_x, selection.track_x * (self.track_width) + channel_columns[selection.col_x], (selection.y - self.scroll) * theme.metrics.font_height + self.track_start_y, 8)
+				print(selection.track_x)
+				print(selection.y)
 
-			-- selection end debug printing
-			print(selection.col_x2, selection.track_x2 * (self.track_width) + channel_columns[selection.col_x2], (selection.y2 - self.scroll) * theme.metrics.font_height + self.track_start_y, 9)
-			print(selection.track_x2)
-			print(selection.y2)
+				-- selection end debug printing
+				print(selection.col_x2, selection.track_x2 * (self.track_width) + channel_columns[selection.col_x2], (selection.y2 - self.scroll) * theme.metrics.font_height + self.track_start_y, 9)
+				print(selection.track_x2)
+				print(selection.y2)
+			end
 
 			rectfill(0, 0, self.width, 0, theme.color.border)
 			rectfill(0, self.track_start_y, self.width, self.track_start_y, theme.color.border)
