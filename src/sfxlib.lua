@@ -396,26 +396,47 @@ local function inject_array_access(tab, offset, func_name, type, stride, count)
 	return tab
 end
 
+--- Creates accessors that take in an index in an array of the type. 
+--- @param tab table
+--- @param key string
+--- @param offset integer
+--- @param pointer_type PointerType
+--- @param stride integer
+--- @param count integer
+--- @return table
+local function better_inject_array_access(tab, key, offset, pointer_type, stride, count)
+	local peek_func, poke_func = peek_funcs[pointer_type], poke_funcs[pointer_type]
+	
+	local m_fake_array = {
+		__index = function(self, k)
+			if type(k) != "number" or k < 0 or k >= count then return end
+			return peek_func(self.addr + k * stride)
+		end,
+		
+		__newindex = function(self, k, v)
+			if type(k) != "number" or k < 0 or k >= count then return end
+			return poke_func(self.addr + k * stride, v)
+		end
+	}
+	
+	rawset(tab, key, setmetatable({addr = tab.addr + offset}, m_fake_array))
+	
+	return tab[key]
+end
+
 --- Create an interface to the PFX6416 at the specified memory address
 --- @param addr ?number
 --- @return SfxInterface
 function new_sfx_interface(addr, instruments_offset, tracks_offset, patterns_offset)
 	addr = addr or 0x30000
 	
-	patterns_offset = patterns_offset or 0xFC
+	patterns_offset = patterns_offset or 0x100
 	instruments_offset = instruments_offset or 0x10000
 	tracks_offset = tracks_offset or 0x20000
 	
 	local m_pattern = expose_pointers(new_lookup_meta(), pattern_layout)
 	local m_track = expose_pointers(new_lookup_meta(), track_layout)
 	local m_instrument = expose_pointers(new_lookup_meta(), instrument_layout)
-	
-	inject_array_access(m_track, 8 + TRACK_ROWS * 0, "row_pitch",        TYPE_U8, 1, TRACK_ROWS)
-	inject_array_access(m_track, 8 + TRACK_ROWS * 1, "row_instrument",   TYPE_U8, 1, TRACK_ROWS)
-	inject_array_access(m_track, 8 + TRACK_ROWS * 2, "row_volume",       TYPE_U8, 1, TRACK_ROWS)
-	inject_array_access(m_track, 8 + TRACK_ROWS * 3, "row_effect",       TYPE_U8, 1, TRACK_ROWS)
-	inject_array_access(m_track, 8 + TRACK_ROWS * 4, "row_effect_param", TYPE_U8, 1, TRACK_ROWS)
-	
 	
 	local tracks = make_address_array(
 		{},
@@ -461,6 +482,15 @@ function new_sfx_interface(addr, instruments_offset, tracks_offset, patterns_off
 	local m_index = expose_pointers(new_lookup_meta(), index_layout)
 	setmetatable(sfx_interface, m_index)
 	
+	for i = 0, TRACK_COUNT - 1 do
+		local track = tracks[i]
+		better_inject_array_access(track, "row_pitches",       8 + TRACK_ROWS * 0, TYPE_U8, 1, TRACK_ROWS)
+		better_inject_array_access(track, "row_instruments",   8 + TRACK_ROWS * 1, TYPE_U8, 1, TRACK_ROWS)
+		better_inject_array_access(track, "row_volumes",       8 + TRACK_ROWS * 2, TYPE_U8, 1, TRACK_ROWS)
+		better_inject_array_access(track, "row_effects",       8 + TRACK_ROWS * 3, TYPE_U8, 1, TRACK_ROWS)
+		better_inject_array_access(track, "row_effect_params", 8 + TRACK_ROWS * 4, TYPE_U8, 1, TRACK_ROWS)
+	end
+	
 	local m_node_parameter = expose_pointers(new_lookup_meta(), node_parameter_layout)
 	local m_node = expose_pointers(new_lookup_meta(), node_layout)
 	local m_envelope = expose_pointers(new_lookup_meta(), envelope_layout)
@@ -505,7 +535,11 @@ function new_sfx_interface(addr, instruments_offset, tracks_offset, patterns_off
 		))
 	end
 	
-	inject_array_access(m_pattern, 4, "pattern_indices", TYPE_U8, 1, CHANNEL_COUNT)
+	for i = 0, PATTERN_COUNT - 1 do
+		local pattern = sfx_interface.patterns[i]
+		better_inject_array_access(pattern, "pattern_indices", 0, TYPE_U8, 1, CHANNEL_COUNT)
+	end
+	
 
 	return sfx_interface
 end

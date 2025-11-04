@@ -314,7 +314,7 @@ function create_slider(self, el)
 	el.disabled = false
 
 	function el:draw()
-		rectfill(0, 0, self.width, self.height, theme.color.primary)
+		rectfill(0, 0, self.width, self.height, theme.color.scroll_background)
 		
 		if not self.disabled then
 			el:draw_nub()
@@ -328,7 +328,7 @@ function create_slider(self, el)
 
 	function el:hover(msg)
 		local _, _, _, _, wy = mouse()
-		el.color = theme.color.highlight
+		el.color = theme.color.secondary_highlight
 
 		if wy == 0 or self.disabled then return end
 
@@ -796,13 +796,14 @@ function create_tracker(self, el, sfx_ref)
 
 	el = default(el, {
 		track_rows = 31,
-		track_extra_padding = 2,
-		track_start_y = 38,
+		track_extra_padding = 1,
+		track_start_y = 40,
+		track_width = 45
 		--track_callback = function() end
 	})
 
-	--el.selected_pattern = 0
-	--el.pattern_data = {}
+	el.sfx_ref = sfx_ref
+	el.selected_pattern = 0
 	el.scroll = 0
 	el.surface = userdata("u8", el.width, el.height)
 	el.needs_update = true
@@ -827,11 +828,30 @@ function create_tracker(self, el, sfx_ref)
 			cls(0)
 			local old_clip = {clip()}
 			local old_cam = {camera()}
+			
+			local height = theme.metrics.font_height
+			local start_y = self.track_start_y + self.track_extra_padding
+			
+			local beat_time = 4
+			local measure_multipier = 4
+			local measure_notes = beat_time * measure_multipier
+			
+			for i = -self.scroll % beat_time, self.track_rows-1, beat_time do
+				rectfill(
+					0, start_y + (i * height),
+					self.width, start_y + ((i+1) * height) - 1,
+					(i + self.scroll) % measure_notes == 0
+						and theme.color.sfx_rows.strong_beat_highlight
+						or theme.color.sfx_rows.beat_highlight
+				)
+			end
+			
 			rectfill(0, 0, self.width, 0, theme.color.border)
 			--rectfill(0,2,self.width,self.height-1,0) ????
 			rectfill(0, self.track_start_y, self.width, self.track_start_y, theme.color.border)
-			for x = 0, 7 do
-				self:draw_track(x * 47 + 2, 44, self.pattern_data[x])
+
+			for chan_i = 0, 7 do
+				self:draw_track(chan_i, chan_i * 47 + 2, self.track_width, self.pattern_data[chan_i])
 			end
 			camera(unpack(old_cam))
 			clip(unpack(old_clip))
@@ -843,10 +863,16 @@ function create_tracker(self, el, sfx_ref)
 		blit(self.surface, nil, nil, nil, self.sx, self.sy)
 	end
 
-	function el:draw_track(x, width, num)
+	function el:draw_track(chan_i, x, width, num)
 		--rectfill(x, theme.metrics.padding + self.track_extra_padding, x + width, self.height - theme.metrics.padding - self.track_extra_padding, 0)
 		print(num, x, 2, theme.color.text)
 		rectfill(x - 2, 1, x - 2, self.height, theme.color.border)
+		
+		local pattern = self.sfx_ref.patterns[self.selected_pattern]
+		if pattern.track_mask & (1 << chan_i) == 0 then 
+			rectfill(x - 1, self.track_start_y + 1, x + width, self.height, 0)
+			return	
+		end
 		
 		local track = self.sfx_ref.tracks[num]
 		
@@ -871,9 +897,10 @@ function create_tracker(self, el, sfx_ref)
 	function el:select_pattern(num)
 		self.needs_update = true
 		if self.sfx_ref.patterns[num] then
+			self.selected_pattern = num
 			self.pattern_data = {}
 			for i = 0, 7 do
-				self.pattern_data[i] = self.sfx_ref.patterns[num]:get_pattern_indices(i)
+				self.pattern_data[i] = self.sfx_ref.patterns[num].pattern_indices[i]
 			end
 		else
 			self.pattern_data = nil
@@ -881,11 +908,16 @@ function create_tracker(self, el, sfx_ref)
 	end
 
 	function el:get_track_row(track, row)
-		local pitch = track:get_row_pitch(row)
-		local inst = track:get_row_instrument(row)
-		local vol = track:get_row_volume(row)
-		local effect_kind = track:get_row_effect(row)
-		local effect_value = track:get_row_effect_param(row)
+		-- local pitch = track:get_row_pitch(row)
+		-- local inst = track:get_row_instrument(row)
+		-- local vol = track:get_row_volume(row)
+		-- local effect_kind = track:get_row_effect(row)
+		-- local effect_value = track:get_row_effect_param(row)
+		local pitch = track.row_pitches[row]
+		local inst = track.row_instruments[row]
+		local vol = track.row_volumes[row]
+		local effect_kind = track.row_effects[row]
+		local effect_value = track.row_effect_params[row]
 		
 		return pitch, inst, vol, effect_kind, effect_value
 	end

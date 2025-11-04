@@ -9,6 +9,7 @@ include("src/toolkit.lua")
 --local primary_font = fetch("./fonts/sqrt.font")
 local primary_font = fetch("/system/fonts/p8.font")
 primary_font:poke(0x4000)
+fetch(DATP.."pal/0.pal"):poke(0x5000)
 
 function _init()
 	sfx_interface = new_sfx_interface()
