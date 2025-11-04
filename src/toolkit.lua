@@ -786,9 +786,19 @@ function create_sfx_grid(self, el)
 	return el
 end
 
+local char_width = 3
+local channel_columns = {
+	[0] = 0, -- Note
+	char_width * 3, -- Instrument
+	1 + char_width * 5, -- Volume
+	2 + char_width * 7, -- Effect
+	3 + char_width * 8, -- Effect Parameter
+	3 + char_width * 10,
+}
+
 ---TBD
----@param self gui
----@param el gui
+---@param self __GUI
+---@param el __GUI
 ---@param sfx_ref SfxInterface
 ---@return table
 function create_tracker(self, el, sfx_ref)
@@ -808,8 +818,12 @@ function create_tracker(self, el, sfx_ref)
 	el.surface = userdata("u8", el.width, el.height)
 	el.needs_update = true
 	el.player_position = 0
-	el.selection = vec(0,0,0,0) -- ORIGIN X, ORIGIN Y, WIDTH, HEIGHT
-	el.sfx_ref = sfx_ref
+	el.selection = {track_x = 0, col_x = 0, y = 0, track_x2 = 0, col_x2 = 0, y2 = 0}
+	el.dragging = false
+	el.was_dragging = false
+	el.hovered_track = -1
+	el.hovered_track_column = -1
+	el.hovered_row = -1
 
 	function el:hover(msg)
 		local _, _, _, _, wy = mouse()
@@ -818,6 +832,44 @@ function create_tracker(self, el, sfx_ref)
 		if wy != 0 then
 			self.scrollbar:scroll_to_abs(mid(0, self.scroll - wy, self.scrollbar.steps))
 		end
+
+		self.hovered_track = msg.mx // self.track_width
+		self.hovered_row = (msg.my - self.track_start_y) // theme.metrics.font_height
+		
+		local track_rel_x = msg.mx % self.track_width
+		if track_rel_x <= channel_columns[1] then
+			self.hovered_track_column = 0
+		elseif track_rel_x > channel_columns[2] and track_rel_x <= channel_columns[3] then
+			self.hovered_track_column = 1
+		elseif track_rel_x > channel_columns[3] and track_rel_x <= channel_columns[4] then
+			self.hovered_track_column = 2
+		elseif track_rel_x > channel_columns[4] and track_rel_x <= channel_columns[5] then
+			self.hovered_track_column = 3
+		elseif track_rel_x > channel_columns[5] then
+			self.hovered_track_column = 4
+		end
+	end
+
+	function el:update(msg)
+		if msg.mx > (self.width - theme.metrics.scrollbar_width) then return end
+
+		self.dragging = msg.mb & 0b1 > 0
+		
+		if not self.was_dragging and self.dragging then
+			self.selection.track_x = self.hovered_track
+			self.selection.col_x = self.hovered_track_column
+			self.selection.track_x2 = self.hovered_track
+			self.selection.col_x2 = self.hovered_track_column
+			self.selection.y = self.hovered_row
+			self.selection.y2 = self.hovered_row
+		elseif self.dragging and self.was_dragging then
+			self.selection.track_x2 = self.hovered_track
+			self.selection.col_x2 = self.hovered_track_column
+			self.selection.y2 = self.hovered_row
+			self.needs_update = true
+		end
+
+		self.was_dragging = self.dragging
 	end
 
 	function el:draw()
@@ -846,6 +898,18 @@ function create_tracker(self, el, sfx_ref)
 				)
 			end
 			
+			local selection = self.selection
+
+			rectfill(
+				selection.track_x * self.track_width + channel_columns[selection.col_x],
+				selection.y * theme.metrics.font_height + self.track_start_y,
+				selection.track_x2 * self.track_width + channel_columns[selection.col_x2],
+				selection.y2 * theme.metrics.font_height + self.track_start_y,
+				theme.color.active
+			)
+			
+			--assert(selection.y <= 0)
+
 			rectfill(0, 0, self.width, 0, theme.color.border)
 			--rectfill(0,2,self.width,self.height-1,0) ????
 			rectfill(0, self.track_start_y, self.width, self.track_start_y, theme.color.border)
@@ -853,6 +917,9 @@ function create_tracker(self, el, sfx_ref)
 			for chan_i = 0, 7 do
 				self:draw_track(chan_i, chan_i * 47 + 2, self.track_width, self.pattern_data[chan_i])
 			end
+
+			circfill(selection.track_x * (self.track_width + 2) + channel_columns[selection.col_x], selection.y * theme.metrics.font_height + self.track_start_y, 3, 8)
+
 			camera(unpack(old_cam))
 			clip(unpack(old_clip))
 			set_draw_target(draw_target)
