@@ -1,5 +1,5 @@
 local util = require("src/util")
-local default, pitch_to_note = util.default, util.pitch_to_note
+local default, pitch_to_note, sgn0 = util.default, util.pitch_to_note
 
 -- lib stuff goes here
 DIVIDER_HORIZONTAL = 0
@@ -786,16 +786,6 @@ function create_sfx_grid(self, el)
 	return el
 end
 
-local char_width = 3
-local channel_columns = {
-	[0] = 0, -- Note
-	char_width * 3, -- Instrument
-	1 + char_width * 5, -- Volume
-	2 + char_width * 7, -- Effect
-	3 + char_width * 8, -- Effect Parameter
-	3 + char_width * 10,
-}
-
 ---TBD
 ---@param self __GUI
 ---@param el __GUI
@@ -808,7 +798,7 @@ function create_tracker(self, el, sfx_ref)
 		track_rows = 31,
 		track_extra_padding = 1,
 		track_start_y = 40,
-		track_width = 45
+		track_width = 47
 		--track_callback = function() end
 	})
 
@@ -816,66 +806,99 @@ function create_tracker(self, el, sfx_ref)
 	el.selected_pattern = 0
 	el.scroll = 0
 	el.surface = userdata("u8", el.width, el.height)
-	el.needs_update = true
+	el.draw_again = true
 	el.player_position = 0
 	el.selection = {track_x = 0, col_x = 0, y = 0, track_x2 = 0, col_x2 = 0, y2 = 0}
 	el.dragging = false
 	el.was_dragging = false
+	el.update_one_last_time = true
 	el.hovered_track = -1
 	el.hovered_track_column = -1
 	el.hovered_row = -1
 
-	function el:hover(msg)
+	local char_width = 4
+	local channel_columns = {
+		[0] = 0,
+		1, -- Note
+		2 + char_width * 2,	-- Octave
+		3 + char_width * 3,	-- Instrument
+		4 + char_width * 5,	-- Volume
+		5 + char_width * 7,	-- Effect
+		6 + char_width * 8,	-- Effect Parameter
+		el.track_width
+	}
+
+	function el:update(msg)
 		local _, _, _, _, wy = mouse()
-		if msg.mx > (self.width - theme.metrics.scrollbar_width) then return end
+		local dragging = msg.mb & 0b1 > 0
+		
+		self.hovered_track = msg.mx // self.track_width
+		self.hovered_row = max(-1, (msg.my - self.track_start_y) // theme.metrics.font_height) + self.scroll
+	
+		local track_rel_x = msg.mx % self.track_width 
+
+		if track_rel_x < channel_columns[2] then
+			self.hovered_track_column = 1
+		elseif track_rel_x >= channel_columns[2] and track_rel_x < channel_columns[3] then
+			self.hovered_track_column = 2
+		elseif track_rel_x >= channel_columns[3] and track_rel_x < channel_columns[4] then
+			self.hovered_track_column = 3
+		elseif track_rel_x >= channel_columns[4] and track_rel_x < channel_columns[5] then
+			self.hovered_track_column = 4
+		elseif track_rel_x >= channel_columns[5] and track_rel_x < channel_columns[6] then
+			self.hovered_track_column = 5
+		elseif track_rel_x >= channel_columns[6] and track_rel_x < channel_columns[7] then
+			self.hovered_track_column = 6
+		elseif track_rel_x >= channel_columns[7] and track_rel_x < el.track_width then
+			self.hovered_track_column = 6
+		else
+			assert(false, "should never happen")
+		end
+
+		if	msg.mx > (self.width - theme.metrics.scrollbar_width) or 
+			msg.mx < 0 or 
+			msg.my > self.height or
+			msg.my < 0 then 
+				if self.update_one_last_time then
+					self.selection.track_x2 = self.hovered_track
+					self.selection.col_x2 = self.hovered_track_column
+					self.selection.y2 = self.hovered_row
+					self.draw_again = true
+					self.update_one_last_time = false
+				end
+				
+				return 		
+		end
 
 		if wy != 0 then
 			self.scrollbar:scroll_to_abs(mid(0, self.scroll - wy, self.scrollbar.steps))
 		end
 
-		self.hovered_track = msg.mx // self.track_width
-		self.hovered_row = (msg.my - self.track_start_y) // theme.metrics.font_height
-		
-		local track_rel_x = msg.mx % self.track_width
-		if track_rel_x <= channel_columns[1] then
-			self.hovered_track_column = 0
-		elseif track_rel_x > channel_columns[2] and track_rel_x <= channel_columns[3] then
-			self.hovered_track_column = 1
-		elseif track_rel_x > channel_columns[3] and track_rel_x <= channel_columns[4] then
-			self.hovered_track_column = 2
-		elseif track_rel_x > channel_columns[4] and track_rel_x <= channel_columns[5] then
-			self.hovered_track_column = 3
-		elseif track_rel_x > channel_columns[5] then
-			self.hovered_track_column = 4
+		if dragging and self.was_dragging then
+			self.selection.track_x2 = self.hovered_track
+			self.selection.col_x2 = self.hovered_track_column
+			self.selection.y2 = self.hovered_row
+			self.draw_again = true
+			self.update_one_last_time = true
 		end
-	end
 
-	function el:update(msg)
-		if msg.mx > (self.width - theme.metrics.scrollbar_width) then return end
-
-		self.dragging = msg.mb & 0b1 > 0
-		
-		if not self.was_dragging and self.dragging then
+		if (not self.was_dragging) and dragging then
+			--notify("only happens once btw")
 			self.selection.track_x = self.hovered_track
 			self.selection.col_x = self.hovered_track_column
 			self.selection.track_x2 = self.hovered_track
 			self.selection.col_x2 = self.hovered_track_column
 			self.selection.y = self.hovered_row
 			self.selection.y2 = self.hovered_row
-		elseif self.dragging and self.was_dragging then
-			self.selection.track_x2 = self.hovered_track
-			self.selection.col_x2 = self.hovered_track_column
-			self.selection.y2 = self.hovered_row
-			self.needs_update = true
 		end
 
-		self.was_dragging = self.dragging
+		self.was_dragging = dragging
 	end
 
-	function el:draw()
+	function el:draw(msg)
 		if not self.pattern_data then return end
 
-		if self.needs_update then
+		if self.draw_again then
 			local draw_target = set_draw_target(self.surface)
 			cls(0)
 			local old_clip = {clip()}
@@ -898,33 +921,54 @@ function create_tracker(self, el, sfx_ref)
 				)
 			end
 			
-			local selection = self.selection
+			-- NEVER EVER WRITE CODE LIKE THE FOLLOWING 17-ish LINES.
+			local selection = self.selection 
 
+			-- we need absolute column values, because we can't calculate offsets between tracks otherwise
+			local col_count = #channel_columns - 2
+			local virtual_col_x = selection.col_x + (selection.track_x * col_count)
+			local virtual_col_x2 = selection.col_x2 + (selection.track_x2 * col_count)
+
+			-- calculates offsets for always drawing a filled rectangle for each "selected" item in the track(s)
+			local dir_x2 = virtual_col_x2 - virtual_col_x >= 0 and 1 or 0 
+			local dir_y2 = selection.y2 - selection.y >= 0 and 1 or 0 
+			local dir_x1 = virtual_col_x - virtual_col_x2 > 0 and 1 or 0 
+			local dir_y1 = selection.y - selection.y2 > 0 and 1 or 0 
+
+			-- just making the pitch column a little nicer to look at.
+			local cosmetic_offset_x2 = ((virtual_col_x2 - virtual_col_x) == 0 and selection.col_x == 1) and 1 or 0
+
+			--TODO: clip drawing to tracks only
 			rectfill(
-				selection.track_x * self.track_width + channel_columns[selection.col_x],
-				selection.y * theme.metrics.font_height + self.track_start_y,
-				selection.track_x2 * self.track_width + channel_columns[selection.col_x2],
-				selection.y2 * theme.metrics.font_height + self.track_start_y,
-				theme.color.active
+				selection.track_x * self.track_width + channel_columns[selection.col_x + dir_x1] - dir_x1,
+				(selection.y - self.scroll + dir_y1) * theme.metrics.font_height + self.track_start_y,
+				(selection.track_x2) * self.track_width + channel_columns[selection.col_x2 + dir_x2] - dir_x2 + cosmetic_offset_x2,
+				(selection.y2 - self.scroll + dir_y2) * theme.metrics.font_height + self.track_start_y,
+				18 --theme.color.active
 			)
 			
-			--assert(selection.y <= 0)
+			-- selection start debug printing
+			print(selection.col_x, selection.track_x * (self.track_width) + channel_columns[selection.col_x], (selection.y - self.scroll) * theme.metrics.font_height + self.track_start_y, 8)
+			print(selection.track_x)
+			print(selection.y)
+
+			-- selection end debug printing
+			print(selection.col_x2, selection.track_x2 * (self.track_width) + channel_columns[selection.col_x2], (selection.y2 - self.scroll) * theme.metrics.font_height + self.track_start_y, 9)
+			print(selection.track_x2)
+			print(selection.y2)
 
 			rectfill(0, 0, self.width, 0, theme.color.border)
-			--rectfill(0,2,self.width,self.height-1,0) ????
 			rectfill(0, self.track_start_y, self.width, self.track_start_y, theme.color.border)
 
 			for chan_i = 0, 7 do
 				self:draw_track(chan_i, chan_i * 47 + 2, self.track_width, self.pattern_data[chan_i])
 			end
 
-			circfill(selection.track_x * (self.track_width + 2) + channel_columns[selection.col_x], selection.y * theme.metrics.font_height + self.track_start_y, 3, 8)
-
 			camera(unpack(old_cam))
 			clip(unpack(old_clip))
 			set_draw_target(draw_target)
 
-			self.needs_update = false
+			self.draw_again = false
 		end
 		
 		blit(self.surface, nil, nil, nil, self.sx, self.sy)
@@ -937,14 +981,19 @@ function create_tracker(self, el, sfx_ref)
 		
 		local pattern = self.sfx_ref.patterns[self.selected_pattern]
 		if pattern.track_mask & (1 << chan_i) == 0 then 
-			rectfill(x - 1, self.track_start_y + 1, x + width, self.height, 0)
+			rectfill(x - 1, self.track_start_y + 1, x + width - 2, self.height, 0)
 			return	
 		end
 		
 		local track = self.sfx_ref.tracks[num]
 		
 		for y = 0, self.track_rows-1 do
-			local pitch, inst, vol, effect_kind, effect_value = self:get_track_row(track, y + self.scroll)
+			local row = y + self.scroll
+			local pitch = track.row_pitches[row]
+			local inst = track.row_instruments[row]
+			local vol = track.row_volumes[row]
+			local effect_kind = track.row_effects[row]
+			local effect_value = track.row_effect_params[row]
 			
 			print(
 				fmt(theme.metrics.sfx_rows.formattable_row, 
@@ -962,7 +1011,7 @@ function create_tracker(self, el, sfx_ref)
 	end
 
 	function el:select_pattern(num)
-		self.needs_update = true
+		self.draw_again = true
 		if self.sfx_ref.patterns[num] then
 			self.selected_pattern = num
 			self.pattern_data = {}
@@ -974,21 +1023,6 @@ function create_tracker(self, el, sfx_ref)
 		end
 	end
 
-	function el:get_track_row(track, row)
-		-- local pitch = track:get_row_pitch(row)
-		-- local inst = track:get_row_instrument(row)
-		-- local vol = track:get_row_volume(row)
-		-- local effect_kind = track:get_row_effect(row)
-		-- local effect_value = track:get_row_effect_param(row)
-		local pitch = track.row_pitches[row]
-		local inst = track.row_instruments[row]
-		local vol = track.row_volumes[row]
-		local effect_kind = track.row_effects[row]
-		local effect_value = track.row_effect_params[row]
-		
-		return pitch, inst, vol, effect_kind, effect_value
-	end
-
 	el.scrollbar = create_slider(el, {
 		axis = SLIDER_VERTICAL,
 		x = el.width - theme.metrics.scrollbar_width - 1,
@@ -998,7 +1032,7 @@ function create_tracker(self, el, sfx_ref)
 		--steps = el.pattern_count - el.cells_tall + 1,
 		callback = function(index)
 			el.scroll = index
-			el.needs_update = true
+			el.draw_again = true
 		end
 	})
 
