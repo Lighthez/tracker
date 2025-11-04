@@ -374,37 +374,13 @@ end
 
 --- Creates accessors that take in an index in an array of the type. 
 --- @param tab table
---- @param offset integer
---- @param func_name string
---- @param type PointerType
---- @param stride integer
---- @param count integer
---- @return table
-local function inject_array_access(tab, offset, func_name, type, stride, count)
-	local peek_func, poke_func = peek_funcs[type], poke_funcs[type]
-	
-	tab["get_"..func_name] = function(self, index)
-		if index < 0 or index >= count then error(fmt("Index out of range: %i.", index)) end
-		return peek_func(self.addr + offset + index * stride)
-	end
-	
-	tab["set_"..func_name] = function(self, index, value)
-		if index < 0 or index >= count then error(fmt("Index out of range: %i.", index)) end
-		return poke_func(self.addr + offset + index * stride, value)
-	end
-	
-	return tab
-end
-
---- Creates accessors that take in an index in an array of the type. 
---- @param tab table
 --- @param key string
 --- @param offset integer
 --- @param pointer_type PointerType
 --- @param stride integer
 --- @param count integer
 --- @return table
-local function better_inject_array_access(tab, key, offset, pointer_type, stride, count)
+local function inject_array_access(tab, key, offset, pointer_type, stride, count)
 	local peek_func, poke_func = peek_funcs[pointer_type], poke_funcs[pointer_type]
 	
 	local m_fake_array = {
@@ -484,11 +460,11 @@ function new_sfx_interface(addr, instruments_offset, tracks_offset, patterns_off
 	
 	for i = 0, TRACK_COUNT - 1 do
 		local track = tracks[i]
-		better_inject_array_access(track, "row_pitches",       8 + TRACK_ROWS * 0, TYPE_U8, 1, TRACK_ROWS)
-		better_inject_array_access(track, "row_instruments",   8 + TRACK_ROWS * 1, TYPE_U8, 1, TRACK_ROWS)
-		better_inject_array_access(track, "row_volumes",       8 + TRACK_ROWS * 2, TYPE_U8, 1, TRACK_ROWS)
-		better_inject_array_access(track, "row_effects",       8 + TRACK_ROWS * 3, TYPE_U8, 1, TRACK_ROWS)
-		better_inject_array_access(track, "row_effect_params", 8 + TRACK_ROWS * 4, TYPE_U8, 1, TRACK_ROWS)
+		inject_array_access(track, "row_pitches",       8 + TRACK_ROWS * 0, TYPE_U8, 1, TRACK_ROWS)
+		inject_array_access(track, "row_instruments",   8 + TRACK_ROWS * 1, TYPE_U8, 1, TRACK_ROWS)
+		inject_array_access(track, "row_volumes",       8 + TRACK_ROWS * 2, TYPE_U8, 1, TRACK_ROWS)
+		inject_array_access(track, "row_effects",       8 + TRACK_ROWS * 3, TYPE_U8, 1, TRACK_ROWS)
+		inject_array_access(track, "row_effect_params", 8 + TRACK_ROWS * 4, TYPE_U8, 1, TRACK_ROWS)
 	end
 	
 	local m_node_parameter = expose_pointers(new_lookup_meta(), node_parameter_layout)
@@ -537,7 +513,7 @@ function new_sfx_interface(addr, instruments_offset, tracks_offset, patterns_off
 	
 	for i = 0, PATTERN_COUNT - 1 do
 		local pattern = sfx_interface.patterns[i]
-		better_inject_array_access(pattern, "pattern_indices", 0, TYPE_U8, 1, CHANNEL_COUNT)
+		inject_array_access(pattern, "pattern_indices", 0, TYPE_U8, 1, CHANNEL_COUNT)
 	end
 	
 
