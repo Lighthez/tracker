@@ -55,6 +55,31 @@ local function play_from(pattern, row, fade_length, channel_mask, row_channel)
 	end
 end
 
+-- DISABLED because zep messed up the pattern length for tick offset.
+
+-- --- Starts playing music from a specific row of a pattern.
+-- --- @param pattern integer The pattern to start playing from.
+-- --- @param row integer? The row to start playing from. Defaults to 0.
+-- --- @param fade_length integer? How many milliseconds the fading effect lasts. Defaults to 0.
+-- --- @param channel_mask integer? An 8-bit mask of which channels will be enabled during playback. Defaults to 0xFF.
+-- --- @param row_channel integer? Which channel the row refers to. Defaults to 0.
+-- local function play_from(pattern, row, fade_length, channel_mask, row_channel)
+-- 	row = row or 0
+-- 	row_channel = row_channel or 0
+-- 	channel_mask = channel_mask or 255
+	
+-- 	if row == 0 then
+-- 		music(pattern, fade_length, channel_mask)
+-- 		return
+-- 	end
+	
+-- 	local track = Sfx.patterns[pattern].pattern_indices[row_channel]
+-- 	local speed = Sfx.tracks[track].speed
+-- 	local tick_offset = row * speed
+	
+-- 	music(pattern, fade_length, channel_mask, nil, tick_offset)
+-- end
+
 return {
 	play_from = play_from
 }

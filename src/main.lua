@@ -3,6 +3,16 @@ include("src/require.lua")
 include("src/sfxlib.lua")
 include("src/theme.lua")
 include("src/toolkit.lua")
+Playback = include("src/playback/playback.lua")
+
+---@class TrackPlayback
+track_playback = {
+	pattern = 0,
+	starting_row = 0,
+	starting_channel = 0,
+	mask = 0b11111111,
+	playing = false
+}
 
 --local secondary_font = fetch("./fonts/micro.font")
 --secondary_font:poke(0x5600)
@@ -12,7 +22,7 @@ primary_font:poke(0x4000)
 fetch(DATP.."pal/0.pal"):poke(0x5000)
 
 function _init()
-	sfx_interface = new_sfx_interface()
+	Sfx = new_sfx_interface()
 
 	--notify(""..1)
 	--notify(fmt("0x%X, 0x%X", sfx.patterns[0].track_mask, sfx.patterns[0].pattern_indices[0]))
@@ -90,16 +100,16 @@ function _init()
 	local pattern_tab = patterns_tab_bar:create_tab("pat")
 	local sfx_tab = patterns_tab_bar:create_tab("sfx")
 
-	sfx_grid = create_sfx_grid(matrix_tab, {
+	local sfx_grid = create_sfx_grid(matrix_tab, {
 		x = 1,
 		y = 0,--183,
 		width = 94,
 		height = 68,
 		cells_tall = 7
 	})
-
+	
 	for i = 0, 63 do 
-		l1:new_item(sfx_interface.instruments[i].name)
+		l1:new_item(Sfx.instruments[i].name)
 	end
 
 
@@ -132,15 +142,24 @@ function _init()
 
 	--t1:attach_scrollbars()
 
-	tracker = create_tracker(t1, {
+	local tracker = create_tracker(t1, {
 		width_rel = 1.0,
 		height_rel = 1.0,
-		sfx_interface = sfx_interface,
 		selected_pattern = 0
-	}, sfx_interface)
+	})
+
+	tracker.track_selection_callback = function(track, row)
+		track_playback.starting_channel = track
+		track_playback.starting_row = row
+		--assert(false)
+		track_playback.pattern = sfx_grid.selected_row - 1
+	end
 
 	sfx_grid.switch_pattern_callback = function(num)
 		tracker:select_pattern(num)
+		track_playback.pattern = num
+		track_playback.starting_channel = 0
+		track_playback.starting_row = 0
 	end
 
 	tracker:select_pattern(0)
@@ -176,6 +195,23 @@ function _init()
 end
 
 function _update()
+	local current_pattern = stat(466)
+	
+	if current_pattern != -1 then
+		track_playback.pattern = current_pattern
+	end
+	
+	if keyp("space") then
+		if (current_pattern == -1) then
+			track_playback.mask = 255 --Sfx.patterns[track_playback.pattern].track_mask
+			Playback.play_from(track_playback.pattern, track_playback.starting_row, 0, track_playback.mask, track_playback.starting_channel)
+		else
+			track_playback.pattern = current_pattern
+			track_playback.starting_row = stat(400 + track_playback.starting_channel, 9)
+			music(-1)
+		end
+	end
+
 	g:update_all()
 end
 

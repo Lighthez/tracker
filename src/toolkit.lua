@@ -727,7 +727,7 @@ function create_sfx_grid(self, el)
 			self.selected_item = self.hovered_row
 			self.selected_row = self.hovered_row
 			self.selection_kind = SELECTION_PATTERN
-
+			
 			self.switch_pattern_callback(self.hovered_row - 1)
 
 			if not key("shift") then 
@@ -789,9 +789,8 @@ end
 ---TBD
 ---@param self __GUI
 ---@param el __GUI
----@param sfx_ref SfxInterface
 ---@return table
-function create_tracker(self, el, sfx_ref)
+function create_tracker(self, el)
 	el = self:attach(el)
 
 	el = default(el, {
@@ -802,7 +801,6 @@ function create_tracker(self, el, sfx_ref)
 		--track_callback = function() end
 	})
 
-	el.sfx_ref = sfx_ref
 	el.selected_pattern = 0
 	el.scroll = 0
 	el.surface = userdata("u8", el.width, el.height)
@@ -897,6 +895,8 @@ function create_tracker(self, el, sfx_ref)
 			self.selection.y = self.hovered_row
 			self.selection.y2 = self.hovered_row
 			self.active_selection = true
+
+			self.track_selection_callback(self.hovered_track, self.hovered_row)
 		end
 
 		self.was_dragging = dragging
@@ -966,6 +966,20 @@ function create_tracker(self, el, sfx_ref)
 				print(selection.y2)
 			end
 
+			local current_pattern = stat(466)
+			if current_pattern != -1 then
+				for i=0, 7 do
+					local track_row = stat(400 + i, 9)
+
+					rectfill(
+						i * self.track_width, 
+						track_row * theme.metrics.font_height,
+						(i+1) * self.track_width,
+						(track_row + 1) * theme.metrics.font_height
+					)
+				end
+			end
+			
 			rectfill(0, 0, self.width, 0, theme.color.border)
 			rectfill(0, self.track_start_y, self.width, self.track_start_y, theme.color.border)
 
@@ -988,13 +1002,13 @@ function create_tracker(self, el, sfx_ref)
 		print(num, x, 2, theme.color.text)
 		rectfill(x - 2, 1, x - 2, self.height, theme.color.border)
 		
-		local pattern = self.sfx_ref.patterns[self.selected_pattern]
+		local pattern = Sfx.patterns[self.selected_pattern]
 		if pattern.track_mask & (1 << chan_i) == 0 then 
 			rectfill(x - 1, self.track_start_y + 1, x + width - 2, self.height, 0)
 			return	
 		end
 		
-		local track = self.sfx_ref.tracks[num]
+		local track = Sfx.tracks[num]
 		
 		for y = 0, self.track_rows-1 do
 			local row = y + self.scroll
@@ -1021,11 +1035,11 @@ function create_tracker(self, el, sfx_ref)
 
 	function el:select_pattern(num)
 		self.draw_again = true
-		if self.sfx_ref.patterns[num] then
+		if Sfx.patterns[num] then
 			self.selected_pattern = num
 			self.pattern_data = {}
 			for i = 0, 7 do
-				self.pattern_data[i] = self.sfx_ref.patterns[num].pattern_indices[i]
+				self.pattern_data[i] = Sfx.patterns[num].pattern_indices[i]
 			end
 		else
 			self.pattern_data = nil

@@ -7,7 +7,7 @@
 
 --- @class Track
 --- @field length integer
---- @field tick_rate integer
+--- @field speed integer
 --- @field loop0 integer
 --- @field loop1 integer
 --- @field delay integer
